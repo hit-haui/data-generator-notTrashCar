@@ -1,5 +1,5 @@
-# Data generator for HAUI.notTrashCar
-Data generator dành cho xe RC của team HAUI.notTrashCar
+# Data generator for HAUI.notTrashCar (Simulator Only)
+Data generator dành cho xe RC của team HAUI.notTrashCar trên simulator
 
 ## Dependency
 
@@ -14,6 +14,9 @@ Plese follow full instruction at [Melodic Morenia wiki](http://wiki.ros.org/melo
 ```bash
 pip3 install -r requirements.txt
 ```
+- Newest version of Unity Simulator from FPT: https://goo.gl/EcHGUs
+- Tay cầm Xbox 360
+
 
 - Router wifi để thiết lập mạng local cho xe và MASTER PC, ưu tiên sử dụng mạng 5GHz
 
@@ -49,25 +52,12 @@ git clone https://github.com/lamhoangtung/data-generator-notTrashCar
 cd data-generator-notTrashCar
 catkin_make
 ```
-- Kết nối PC và board Jeston TX2 của xe vào cùng một mạng local ở trên
-- Khởi tạo server `roscore` trên MASTER PC
-```bash
-sudo su
-cd data-generator-notTrashCar
-source ./devel/setup.bash
-source ~/.bashrc
-roscore
-```
-- Khởi chạy tất cả các node ROS để giao tiếp với phần cứng trên mạch Jeston
-```bash
-./run_all_node.sh
-```
-- Kết nối tay cầm Xbox 360 vào MASTER PC
-- Chạy script [`main.py`](/src/team705/src/main.py) với quyền root
 
+- Kết nối tay cầm Xbox 360 vào PC
+- Chạy file [`team705.launch`](/src/team705/launch/team705.launch) với quyền root
 ```bash
 sudo su
-cd data-generator-notTrashCar
+>>>>>>> 55a7353161a1f46a4668693a6920e6de17df2279
 source ./devel/setup.bash
 source ~/.bashrc
 rosrun team705 main.py
@@ -79,5 +69,15 @@ rosrun team705 main.py
 - Nhấn phím `X` để khởi động/thoát chế độ Reverse
 - Nhấn `Ctrl + C` trên cửa sổ chạy file python để dừng quá trình generate data.
 
+- Chạy simulator theo hướng dẫn [này](https://drive.google.com/open?id=14vCOzUO6_-6fyv0eypql1owZz3NIRiRY) với port là `127.0.0.1:9005`. 
+
+## Cách sử dụng Data Generator
+- Giữ phím `A` trên controller để phanh
+- Giữ phím `Y` để giảm tốc độ của xe
+- Dùng `left joystick` để điều khiển góc lái của xe
+- Nhấn phím `X` để khởi động/thoát chế độ Reverse
+- Nhấn `Ctrl + C` trên cửa sổ chạy file python để dừng quá trình generate data.
+
 ## Data format
 Dữ liệu được sinh ra sẽ được lưu tại folder `recorded_data` tại vị trí chạy câu lệnh run (trong trường hợp là này root của repo). Bên trong có chứa 2 folder chứa ảnh RGB và Depth, cộng với 1 file `.json` tương ứng là label cho các ảnh.
+
