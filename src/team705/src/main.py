@@ -11,9 +11,6 @@ import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 
-
-import sys
-
 try:
     os.chdir(os.path.dirname(__file__))
     os.system('clear')
@@ -36,7 +33,7 @@ def car_control(angle, speed):
     pub_angle = rospy.Publisher('/team705_steerAngle', Float32, queue_size=10)
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
-    
+
 
 def image_callback(data):
     '''
@@ -49,8 +46,7 @@ def image_callback(data):
     # video_out.write(img)
     cv2.waitKey(1)
     print('FPS:', 1/(time.time() - start_time))
-    
-    
+
 
 '''
 Nên viết thêm một hàm để nhận tín hiệu từ bàn phím và chuyển hoá thành góc quay và tốc độ, call nó trong `image_callback`,
@@ -58,12 +54,13 @@ Nên viết thêm một hàm để nhận tín hiệu từ bàn phím và chuy�
 Nhận phím thế nào thì chịu khó google nhé.
 '''
 
+
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rospy.Subscriber("/team705_image/compressed", CompressedImage,
                      image_callback, queue_size=1, buff_size=2**24)
     rospy.spin()
-    
+
     # video_out.release()
     # print('Saved', video_out_name)
 
