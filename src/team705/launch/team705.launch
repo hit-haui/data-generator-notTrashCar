@@ -1,0 +1,6 @@
+<launch>
+	<include ns="bridge05" file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+		<arg name="port" value="9005" />
+	</include>
+	<node name="team705" pkg="team705" type="main.py" output="screen"/>
+</launch>
