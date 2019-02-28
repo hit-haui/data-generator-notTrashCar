@@ -58,19 +58,33 @@ def convert_to_angle(x, y):
     return angle
 
 joy = xbox.Joystick()
+reverse = False
 
 def joy_stick_controller():
+    global joy, reverse
+    angle = 0.0
+    x, y = joy.leftStick()
+    angle = convert_to_angle(x, y)
+    if joy.X() == 1:
+        reverse = True if reverse == False else False
     
-    while not joy.Back():
-        angle = 0.0
-        x, y = joy.leftStick()
-        angle = convert_to_angle(x, y)
-        if joy.Y() == 0:
-            car_control(angle = angle, speed = 20)
-        else:
-            car_control(angle = angle, speed = 50)
-        if joy.A():
-            car_control(angle = 0, speed = 0)
+    if reverse:
+        if angle > 60 and angle <= 120:
+            angle = 60
+        elif angle >= -120 and angle < -60:
+            angle = -60
+    else:
+        if angle > 60 and angle <= 179.9:
+            angle = 60
+        elif angle >= -179.9 and angle < -60:
+            angle = -60
+    print(reverse)
+    if joy.Y() == 0:
+        car_control(angle = angle, speed = 100)
+    else:
+        car_control(angle = angle, speed = 50)
+    if joy.A():
+        car_control(angle = 0, speed = 0)
 
 
 def rgb_callback(rgb_data):
@@ -84,8 +98,8 @@ def rgb_callback(rgb_data):
     # # cv2.imshow('rgb_frame', rgb_img)
     # cv2.waitKey(1)
     # rgb_video_out.write(rgb_img)
-    print('RGB Shape:',rgb_img.shape)
-    print('FPS_RGB:', 1/(time.time() - start_time))
+    # print('RGB Shape:',rgb_img.shape)
+    # print('FPS_RGB:', 1/(time.time() - start_time))
 
 
 # def depth_callback(depth_data):
@@ -104,7 +118,7 @@ def rgb_callback(rgb_data):
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
-    rgb_sub = rospy.Subscriber(
+    rospy.Subscriber(
         '/camera/rgb/image_raw/compressed/', CompressedImage, rgb_callback, queue_size=1, buff_size=2**24)
     # depth_sub = rospy.Subscriber(
         # '/camera/depth/image_raw/compressed/', CompressedImage, depth_callback, queue_size=1, buff_size=2**24)
