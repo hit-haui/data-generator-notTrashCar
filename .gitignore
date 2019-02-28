@@ -168,3 +168,5 @@ CATKIN_IGNORE
 *.pbxproj
 *.xcworkspacedata
 /tags
+.catkin_workspace
+*.avi
