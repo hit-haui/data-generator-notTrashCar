@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 import os
 import sys
-import time
+import time, math, xbox
 
-import cv2
-import numpy as np
+# import cv2
+# import numpy as np
 
-import rospkg
+# import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
@@ -38,6 +38,55 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
+def convert_to_angle(x, y):
+    angle = 0.0
+    if x == 0 and y == 0 or x == 0 and y > 0:
+        angle = 0.0
+    if x == 0.0 and y < 0.0:
+        angle = 180.0
+    if y == 0.0 and x > 0:
+        angle = 90.0
+    if y == 0.0 and x < 0:
+        angle = -90.0
+    elif x > 0.0 and y > 0.0:
+        angle = math.degrees(math.atan(x/y))
+    elif x > 0.0  and y < 0.0:
+        angle = math.degrees(math.atan(x/y)) + 180.0
+    elif x < 0.0 and y < 0.0:
+        angle = math.degrees(math.atan(x/y)) - 180.0
+    elif x < 0.0 and y > 0.0:
+        angle = math.degrees(math.atan(x/y))
+    return angle
+
+joy = xbox.Joystick()
+reverse = False
+
+def joy_stick_controller():
+    global joy, reverse
+    angle = 0.0
+    x, y = joy.leftStick()
+    angle = convert_to_angle(x, y)
+    if joy.X() == 1:
+        reverse = True if reverse == False else False
+    
+    if reverse:
+        if angle > 60 and angle <= 120:
+            angle = 60
+        elif angle >= -120 and angle < -60:
+            angle = -60
+    else:
+        if angle > 60 and angle <= 179.9:
+            angle = 60
+        elif angle >= -179.9 and angle < -60:
+            angle = -60
+    print(reverse)
+    
+    if joy.Y() == 0:
+        car_control(angle = angle, speed = 100)
+    else:
+        car_control(angle = angle, speed = 50)
+    if joy.A():
+        car_control(angle = 0, speed = 0)
 
 rgb_index = 0
 depth_index = 0
@@ -48,6 +97,7 @@ def image_callback(rgb_data, depth_data):
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
     global rgb_index, depth_index
+    joy_stick_controller()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     temp = np.fromstring(depth_data.data, np.uint8)
@@ -59,7 +109,7 @@ def image_callback(rgb_data, depth_data):
     depth_index += 1
     print('Wrote', depth_index, 'Depth frame to video.')
     print('============================================')
-
+    
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
@@ -71,6 +121,7 @@ def main():
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
+
     try:
         rospy.spin()
     except KeyboardInterrupt:
