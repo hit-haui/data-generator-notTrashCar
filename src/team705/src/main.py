@@ -11,6 +11,7 @@ import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 import message_filters
+import json
 
 try:
     os.chdir(os.path.dirname(__file__))
@@ -60,15 +61,19 @@ def convert_to_angle(x, y):
 
 joy = xbox.Joystick()
 reverse = False
+joy_start_time = 0.0
+joy_record = {} 
+
+
 
 def joy_stick_controller():
     global joy, reverse
-    angle = 0.0
+    speed = angle = joy_current_time =  0.0
     x, y = joy.leftStick()
+    joy_current_time = time.time() - joy_start_time
     angle = convert_to_angle(x, y)
     if joy.X() == 1:
         reverse = True if reverse == False else False
-    
     if reverse:
         if angle > 60 and angle <= 120:
             angle = 60
@@ -78,19 +83,31 @@ def joy_stick_controller():
         if angle > 60 and angle <= 179.9:
             angle = 60
         elif angle >= -179.9 and angle < -60:
-            angle = -60
-    print(reverse)
-    
+            angle = -60    
     if joy.Y() == 0:
-        car_control(angle = angle, speed = 100)
+        speed = 100
+        car_control(angle = angle, speed = speed)
     else:
-        car_control(angle = angle, speed = 50)
+        speed = 50
+        car_control(angle = angle, speed = speed)
     if joy.A():
-        car_control(angle = 0, speed = 0)
+        angle = 0
+        speed = 0
+        car_control(angle = angle, speed = speed)
+    joy_record[joy_current_time] = []
+    joy_record[joy_current_time].append({
+        'time' : joy_current_time,
+        'angle' : angle,
+        'speed' : speed,
+    })
+    if joy.Back():
+        with open('key_data.json', 'w', encoding = 'utf-8') as outfile:  
+            json.dump(joy_record, outfile, ensure_ascii= False,sort_keys= False, indent=4)
+            outfile.write("\n")
+
 
 rgb_index = 0
 depth_index = 0
-
 
 def image_callback(rgb_data, depth_data):
     '''
@@ -132,4 +149,6 @@ def main():
 
 
 if __name__ == '__main__':
+    global joy_start_time
+    joy_start_time = time.time()
     main()
