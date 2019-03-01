@@ -3,10 +3,10 @@ import os
 import sys
 import time, math, xbox
 
-# import cv2
-# import numpy as np
+import cv2
+import numpy as np
 
-# import rospkg
+import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
@@ -62,7 +62,7 @@ def convert_to_angle(x, y):
 joy = xbox.Joystick()
 reverse = False
 joy_start_time = 0.0
-joy_record = {} 
+joy_record = []
 
 
 
@@ -94,16 +94,12 @@ def joy_stick_controller():
         angle = 0
         speed = 0
         car_control(angle = angle, speed = speed)
-    joy_record[joy_current_time] = []
-    joy_record[joy_current_time].append({
+    joy_record.append({
         'time' : joy_current_time,
         'angle' : angle,
         'speed' : speed,
     })
-    if joy.Back():
-        with open('key_data.json', 'w', encoding = 'utf-8') as outfile:  
-            json.dump(joy_record, outfile, ensure_ascii= False,sort_keys= False, indent=4)
-            outfile.write("\n")
+
 
 
 rgb_index = 0
@@ -139,6 +135,9 @@ def main():
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
 
+    global joy_start_time
+    joy_start_time = time.time()
+
     try:
         rospy.spin()
     except KeyboardInterrupt:
@@ -146,9 +145,10 @@ def main():
     rgb_video_out.release()
     depth_video_out.release()
     print('Saved 2 videos')
+    with open('key_data.json', 'w', encoding='utf-8') as outfile:
+        json.dump(joy_record, outfile, ensure_ascii=False,
+                    sort_keys=False, indent=4)
+        outfile.write("\n")
 
 
-if __name__ == '__main__':
-    global joy_start_time
-    joy_start_time = time.time()
-    main()
+main()
