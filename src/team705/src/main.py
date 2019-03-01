@@ -6,11 +6,11 @@ import time
 import cv2
 import numpy as np
 
-import message_filters
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
+import message_filters
 
 try:
     os.chdir(os.path.dirname(__file__))
@@ -20,9 +20,12 @@ try:
 except:
     pass
 
-# fourcc = cv2.VideoWriter_fourcc(*'XVID')
-# video_out_name = 'output_{}.avi'.format(time.time())
-# video_out = cv2.VideoWriter(video_out_name, fourcc, 20, (320, 240))
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+rgb_video_out_name = 'rgb_output_{}.avi'.format(time.time())
+rgb_video_out = cv2.VideoWriter(rgb_video_out_name, fourcc, 60, (320, 240))
+
+depth_video_out_name = 'depth_output_{}.avi'.format(time.time())
+depth_video_out = cv2.VideoWriter(depth_video_out_name, fourcc, 60, (320, 240))
 
 
 def car_control(angle, speed):
@@ -36,33 +39,64 @@ def car_control(angle, speed):
     print('Angle:', angle, 'Speed:', speed)
 
 
+def car_control_ver2(angle, speed):
+    pub_speed_ver2 = rospy.Publisher('/speed', Float32, queue_size=10)
+    pub_speed_ver2.publish(speed)
+    pub_angle_ver2 = rospy.Publisher('/steerAngle', Float32, queue_size=10)
+    pub_angle_ver2.publish(angle)
+    print('Angle:', angle, 'Speed:', speed)
+
+
+global obstacle
+def sensor_braking(angle):
+    status = rospy.Publisher('/ss_status', bool, queue_size=10)
+    if status == True:
+        obstacle = 0
+    else:
+        obstacle += 1
+    if obstacle >= 150:
+        car_control(angle, 0)
+
+
+rgb_index = 0
+depth_index = 0
+
+
 def image_callback(rgb_data, depth_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
-    start_time = time.time()
+    global rgb_index, depth_index
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     temp = np.fromstring(depth_data.data, np.uint8)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    cv2.imshow('rgb_frame', rgb_img)
-    cv2.imshow('depth_frame', depth_img)
-    cv2.waitKey(1)
-    # video_out.write(img)
-    print('FPS:', 1/(time.time() - start_time))
+    rgb_video_out.write(rgb_img)
+    rgb_index += 1
+    print('Wrote', rgb_index, 'RGB frame to video.')
+    depth_video_out.write(depth_img)
+    depth_index += 1
+    print('Wrote', depth_index, 'Depth frame to video.')
+    print('============================================')
 
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
-        '/camera/rgb/image_raw', CompressedImage, buff_size=2**24)
+        '/camera/rgb/image_raw/compressed/', CompressedImage, buff_size=2**32)
     depth_sub = message_filters.Subscriber(
-        '/camera/depth/image_raw', CompressedImage, buff_size=2**24)
-    ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub], queue_size=1)
+        '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**32)
+
+    ts = message_filters.ApproximateTimeSynchronizer(
+        [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
-    rospy.spin()
-    # video_out.release()
-    # print('Saved', video_out_name)
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        pass
+    rgb_video_out.release()
+    depth_video_out.release()
+    print('Saved 2 videos')
 
 
 if __name__ == '__main__':
