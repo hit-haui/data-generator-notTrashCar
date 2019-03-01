@@ -3,10 +3,10 @@ import os
 import sys
 import time, math, xbox
 
-# import cv2
-# import numpy as np
+import cv2
+import numpy as np
 
-# import rospkg
+import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
