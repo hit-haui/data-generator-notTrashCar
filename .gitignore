@@ -170,3 +170,5 @@ CATKIN_IGNORE
 /tags
 .catkin_workspace
 *.avi
+*.jpg
+*.json
