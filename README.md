@@ -1,5 +1,5 @@
 # Data generator for HAUI.notTrashCar
-Data generator dành cho xe RC của team HAUI.notTrashCar
+Data generator dành cho xe RC của team HAUI.notTrashCar trên simulator
 
 ## Dependency
 
@@ -18,6 +18,7 @@ sudo apt-get install ros-melodic-rosbridge-server
 pip3 install -r requirements.txt
 ```
 - Newest version of Unity Simulator from FPT: https://goo.gl/EcHGUs
+- Tay cầm Xbox 360
 
 ## Cách run
 
@@ -27,16 +28,22 @@ git clone https://github.com/lamhoangtung/data-generator-notTrashCar
 cd data-generator-notTrashCar
 catkin_make
 ```
-
-- Package được chạy theo hướng dẫn trong file [`team705.launch`](/src/team705/launch/team705.launch), đầu tiên chạy `ros_bridge` khởi tạo kết nối đến simulator sau đó chạy đến [`main.py`](/src/team705/src/main.py) như một node của ROS
-
+- Kết nối tay cầm Xbox 360 vào PC
+- Chạy file [`team705.launch`](/src/team705/launch/team705.launch) với quyền root
 ```bash
+sudo su
 source ./devel/setup.bash
 roslaunch team705 team705.launch
 ```
 
-- Chạy simulator theo hướng dẫn [này](https://drive.google.com/open?id=14vCOzUO6_-6fyv0eypql1owZz3NIRiRY) với port là `127.0.0.1:9005`. Lưu ý một số ROS topic mới:
-    - Topic nhận ảnh màu: `/camera/rgb/image_raw`
-    - Topic nhận ảnh Depth: `/camera/depth/image_raw`
-    - Topic set tốc độ: `/set_speed_car_api`
-    - Topic set góc lái: `/set_steer_car_api`
+- Chạy simulator theo hướng dẫn [này](https://drive.google.com/open?id=14vCOzUO6_-6fyv0eypql1owZz3NIRiRY) với port là `127.0.0.1:9005`. 
+
+## Cách sử dụng Data Generator
+- Giữ phím `A` trên controller để phanh
+- Giữ phím `Y` để giảm tốc độ của xe
+- Dùng `left joystick` để điều khiển góc lái của xe
+- Nhấn phím `X` để khởi động/thoát chế độ Reverse
+- Nhấn `Ctrl + C` trên cửa sổ chạy file python để dừng quá trình generate data.
+
+## Data format
+Dữ liệu được sinh ra sẽ được lưu tại folder `recorded_data` tại vị trí chạy câu lệnh run (trong trường hợp là này root của repo). Bên trong có chứa 2 folder chứa ảnh RGB và Depth, cộng với 1 file `.json` tương ứng là label cho các ảnh.
