@@ -47,7 +47,7 @@ def convert_to_angle(x, y):
         angle = math.degrees(math.atan(x/y))
     if angle == -180 or angle == 180:
         angle = 0
-    return -angle
+    return float(-angle)
 
 
 joy = xbox.Joystick()
@@ -59,7 +59,7 @@ emergency_brake = True
 
 
 def joy_stick_controller(index):
-    global joy, reverse, emergency_brake
+    global joy, reverse, emergency_brake, rgb_path, depth_path
     speed = angle = 0.0
     x, y = joy.leftStick()
     angle = convert_to_angle(x, y)
@@ -89,17 +89,25 @@ def joy_stick_controller(index):
         else:
             speed = 5
             car_control(angle=angle, speed=speed)
+    
+    rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
+    depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
     joy_record.append({
         'index': index,
+        'rgb_img_path': rgb_img_path,
+        'depth_img_path': depth_img_path,
         'angle': angle,
         'speed': speed,
     })
-
+    return rgb_img_path, depth_img_path
 
 rgb_index = 0
 depth_index = 0
-rgb_path = './recored_data/rgb/'
-depth_path = './recored_data/depth/'
+output_path = './dataset_{}/'.format(time.time())
+rgb_path = os.path.join(output_path, 'rgb')
+depth_path = os.path.join(output_path, 'depth')
+
+
 try:
     os.makedirs(rgb_path)
     os.makedirs(depth_path)
@@ -113,14 +121,14 @@ def image_callback(rgb_data, depth_data):
     global rgb_index, depth_index
     rgb_index += 1
     depth_index += 1
-    joy_stick_controller(rgb_index)
+    rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     temp = np.fromstring(depth_data.data, np.uint8)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    cv2.imwrite(rgb_path + '{}_rgb.jpg'.format(rgb_index), rgb_img)
+    cv2.imwrite(rgb_img_path, rgb_img)
     print('Wrote', rgb_index, 'RGB frame out.')
-    cv2.imwrite(depth_path + '{}_depth.jpg'.format(depth_index), depth_img)
+    cv2.imwrite(depth_img_path, depth_img)
     print('Wrote', depth_index, 'Depth frame out.')
     print('============================================')
 
@@ -143,7 +151,7 @@ def main():
     # rgb_video_out.release()
     # depth_video_out.release()
     # print('Saved 2 videos')
-    with open('./recored_data/key_data.json', 'w', encoding='utf-8') as outfile:
+    with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
         json.dump(joy_record, outfile, ensure_ascii=False,
                   sort_keys=False, indent=4)
         outfile.write("\n")
