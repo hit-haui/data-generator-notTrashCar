@@ -16,14 +16,6 @@ import message_filters
 import json
 
 
-# fourcc = cv2.VideoWriter_fourcc(*'XVID')
-# rgb_video_out_name = 'rgb_output_{}.avi'.format(time.time())
-# rgb_video_out = cv2.VideoWriter(rgb_video_out_name, fourcc, 60, (320, 240))
-
-# depth_video_out_name = 'depth_output_{}.avi'.format(time.time())
-# depth_video_out = cv2.VideoWriter(depth_video_out_name, fourcc, 60, (320, 240))
-
-
 def car_control(angle, speed):
     '''
     Hàm này dùng để gửi tín hiệu đến simulator
@@ -53,9 +45,9 @@ def convert_to_angle(x, y):
         angle = math.degrees(math.atan(x/y)) - 180.0
     elif x < 0.0 and y > 0.0:
         angle = math.degrees(math.atan(x/y))
-    if angle == 180 or angle == -180:
+    if angle == -180 or angle == 180:
         angle = 0
-    return -angle
+    return float(-angle)
 
 
 joy = xbox.Joystick()
@@ -64,6 +56,8 @@ joy_start_time = 0.0
 joy_record = []
 emergency_brake = True
 proximity_sensor = True
+
+emergency_brake = True
 
 
 def joy_stick_controller(index):
@@ -77,6 +71,8 @@ def joy_stick_controller(index):
         emergency_brake = True if emergency_brake == False else False
 
     if emergency_brake or proximity_sensor == False:
+        angle = 0
+        speed = 0
         car_control(angle=0, speed=0)
 
     else:
@@ -98,19 +94,26 @@ def joy_stick_controller(index):
         else:
             speed = 5
             car_control(angle=angle, speed=speed)
-
+    
+    rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
+    depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
     joy_record.append({
         'index': index,
+        'rgb_img_path': rgb_img_path,
+        'depth_img_path': depth_img_path,
         'angle': angle,
         'speed': speed,
         'proximity value': proximity_sensor
     })
-
+    return rgb_img_path, depth_img_path
 
 rgb_index = 0
 depth_index = 0
-rgb_path = './recored_data/rgb/'
-depth_path = './recored_data/depth/'
+output_path = './dataset_{}/'.format(time.time())
+rgb_path = os.path.join(output_path, 'rgb')
+depth_path = os.path.join(output_path, 'depth')
+
+
 try:
     os.makedirs(rgb_path)
     os.makedirs(depth_path)
@@ -125,14 +128,14 @@ def image_callback(rgb_data, depth_data):
     global rgb_index, depth_index
     rgb_index += 1
     depth_index += 1
-    joy_stick_controller(rgb_index)
+    rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     temp = np.fromstring(depth_data.data, np.uint8)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    cv2.imwrite(rgb_path + '{}_rgb.jpg'.format(rgb_index), rgb_img)
+    cv2.imwrite(rgb_img_path, rgb_img)
     print('Wrote', rgb_index, 'RGB frame out.')
-    cv2.imwrite(depth_path + '{}_rgb.jpg'.format(depth_index), depth_img)
+    cv2.imwrite(depth_img_path, depth_img)
     print('Wrote', depth_index, 'Depth frame out.')
     print('============================================')
 
@@ -145,12 +148,11 @@ def proximity_callback(proximity_data):
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
-        '/camera/rgb/image_raw/compressed/', CompressedImage, buff_size=2**32)
+        '/camera/rgb/image_raw/compressed', CompressedImage, buff_size=2**32)
     depth_sub = message_filters.Subscriber(
         '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**32)
     proximity_sub = rospy.Subscriber(
         '/ss_status', Bool, proximity_callback)
-    print('Here')
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
@@ -158,10 +160,7 @@ def main():
         rospy.spin()
     except KeyboardInterrupt:
         pass
-    # rgb_video_out.release()
-    # depth_video_out.release()
-    # print('Saved 2 videos')
-    with open('./recored_data/key_data.json', 'w', encoding='utf-8') as outfile:
+    with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
         json.dump(joy_record, outfile, ensure_ascii=False,
                   sort_keys=False, indent=4)
         outfile.write("\n")
