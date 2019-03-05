@@ -11,17 +11,10 @@ import numpy as np
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool
 import message_filters
 import json
 
-try:
-    os.chdir(os.path.dirname(__file__))
-    os.system('clear')
-    print("\nWait for initial setup, please don't connect anything yet...\n")
-    sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
-except:
-    pass
 
 # fourcc = cv2.VideoWriter_fourcc(*'XVID')
 # rgb_video_out_name = 'rgb_output_{}.avi'.format(time.time())
@@ -60,46 +53,57 @@ def convert_to_angle(x, y):
         angle = math.degrees(math.atan(x/y)) - 180.0
     elif x < 0.0 and y > 0.0:
         angle = math.degrees(math.atan(x/y))
-    return angle
+    if angle == 180 or angle == -180:
+        angle = 0
+    return -angle
 
 
 joy = xbox.Joystick()
 reverse = False
 joy_start_time = 0.0
 joy_record = []
+emergency_brake = True
+proximity_sensor = True
 
 
 def joy_stick_controller(index):
-    global joy, reverse
+    global joy, reverse, emergency_brake
     speed = angle = 0.0
     x, y = joy.leftStick()
     angle = convert_to_angle(x, y)
-    if joy.X() == 1:
-        reverse = True if reverse == False else False
-    if reverse:
-        if angle > 60 and angle <= 120:
-            angle = 60
-        elif angle >= -120 and angle < -60:
-            angle = -60
+    print("Proximity:", proximity_sensor)
+    print('Hand brake:', emergency_brake)
+    if joy.B() == 1:
+        emergency_brake = True if emergency_brake == False else False
+
+    if emergency_brake or proximity_sensor == False:
+        car_control(angle=0, speed=0)
+
     else:
-        if angle > 60 and angle <= 179.9:
-            angle = 60
-        elif angle >= -179.9 and angle < -60:
-            angle = -60
-    if joy.Y() == 0:
-        speed = 100
-        car_control(angle=angle, speed=speed)
-    else:
-        speed = 50
-        car_control(angle=angle, speed=speed)
-    if joy.A():
-        angle = 0
-        speed = 0
-        car_control(angle=angle, speed=speed)
+        if joy.X() == 1:
+            reverse = True if reverse == False else False
+        if reverse:
+            if angle > 60 and angle <= 120:
+                angle = 60
+            elif angle >= -120 and angle < -60:
+                angle = -60
+        else:
+            if angle > 60 and angle <= 179.9:
+                angle = 60
+            elif angle >= -179.9 and angle < -60:
+                angle = -60
+        if joy.Y() == 0:
+            speed = 10
+            car_control(angle=angle, speed=speed)
+        else:
+            speed = 5
+            car_control(angle=angle, speed=speed)
+
     joy_record.append({
         'index': index,
         'angle': angle,
         'speed': speed,
+        'proximity value': proximity_sensor
     })
 
 
@@ -112,6 +116,7 @@ try:
     os.makedirs(depth_path)
 except:
     pass
+
 
 def image_callback(rgb_data, depth_data):
     '''
@@ -132,17 +137,23 @@ def image_callback(rgb_data, depth_data):
     print('============================================')
 
 
+def proximity_callback(proximity_data):
+    global proximity_sensor
+    proximity_sensor = proximity_data.data
+
+
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
         '/camera/rgb/image_raw/compressed/', CompressedImage, buff_size=2**32)
     depth_sub = message_filters.Subscriber(
         '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**32)
-
+    proximity_sub = rospy.Subscriber(
+        '/ss_status', Bool, proximity_callback)
+    print('Here')
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
-
     try:
         rospy.spin()
     except KeyboardInterrupt:
