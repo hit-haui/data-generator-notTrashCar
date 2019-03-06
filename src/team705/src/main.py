@@ -14,7 +14,11 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 import message_filters
 import json
+from keras.models import load_model
 
+model_path = ''
+img_size = (200, 66 , 3)
+model = load_model(model_path)
 try:
     os.chdir(os.path.dirname(__file__))
     os.system('clear')
@@ -120,13 +124,21 @@ def image_callback(rgb_data, depth_data):
     global rgb_index, depth_index
     rgb_index += 1
     depth_index += 1
-    joy_stick_controller(rgb_index)
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     temp = np.fromstring(depth_data.data, np.uint8)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     cv2.imwrite(rgb_path + '{}_rgb.jpg'.format(rgb_index), rgb_img)
     print('Wrote', rgb_index, 'RGB frame out.')
+
+    images = []
+    rgb_img = cv2.resize(rgb_img, img_size[:-1])
+    images.append(rgb_img)
+    images = np.array(images)
+    angle = model.predict(images) - 60
+    car_control(angle,50)
+
+    
     cv2.imwrite(depth_path + '{}_rgb.jpg'.format(depth_index), depth_img)
     print('Wrote', depth_index, 'Depth frame out.')
     print('============================================')
