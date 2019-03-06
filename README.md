@@ -1,4 +1,4 @@
-# Data generator for HAUI.notTrashCar
+# Data generator for HAUI.notTrashCar (Simulator Only)
 Data generator dành cho xe RC của team HAUI.notTrashCar trên simulator
 
 ## Dependency
