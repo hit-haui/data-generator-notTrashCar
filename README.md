@@ -1,5 +1,5 @@
-# Data generator for HAUI.notTrashCar
-Data generator dành cho xe RC của team HAUI.notTrashCar
+# Data generator for HAUI.notTrashCar (required MASTER PC)
+Data generator dành cho xe RC của team HAUI.notTrashCar cần thêm m
 
 ## Dependency
 
