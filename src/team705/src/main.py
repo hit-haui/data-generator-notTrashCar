@@ -11,6 +11,7 @@ import numpy as np
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
+
 from std_msgs.msg import Float32, Bool
 import message_filters
 import json
@@ -56,7 +57,6 @@ joy_start_time = 0.0
 joy_record = []
 emergency_brake = True
 proximity_sensor = True
-
 emergency_brake = True
 
 
@@ -107,6 +107,7 @@ def joy_stick_controller(index):
     })
     return rgb_img_path, depth_img_path
 
+  
 rgb_index = 0
 depth_index = 0
 output_path = './dataset_{}/'.format(time.time())
@@ -144,7 +145,7 @@ def proximity_callback(proximity_data):
     global proximity_sensor
     proximity_sensor = proximity_data.data
 
-
+    
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
