@@ -58,10 +58,11 @@ joy_record = []
 emergency_brake = True
 proximity_sensor = True
 emergency_brake = True
+record_status = False
 
 
 def joy_stick_controller(index):
-    global joy, reverse, emergency_brake
+    global joy, reverse, emergency_brake, record_status
     speed = angle = 0.0
     x, y = joy.leftStick()
     angle = convert_to_angle(x, y)
@@ -94,18 +95,23 @@ def joy_stick_controller(index):
         else:
             speed = 5
             car_control(angle=angle, speed=speed)
-    
-    rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
-    depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
-    joy_record.append({
-        'index': index,
-        'rgb_img_path': rgb_img_path,
-        'depth_img_path': depth_img_path,
-        'angle': angle,
-        'speed': speed,
-        'proximity value': proximity_sensor
-    })
-    return rgb_img_path, depth_img_path
+
+    if joy.leftBumper() == 1:
+        record_status = not record_status
+        start_recording()
+
+    if record_status == True:    
+        rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
+        depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
+        joy_record.append({
+            'index': index,
+            'rgb_img_path': rgb_img_path,
+            'depth_img_path': depth_img_path,
+            'angle': angle,
+            'speed': speed,
+            'proximity value': proximity_sensor
+        })
+        return rgb_img_path, depth_img_path
 
   
 rgb_index = 0
@@ -126,24 +132,35 @@ def image_callback(rgb_data, depth_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
-    global rgb_index, depth_index
-    rgb_index += 1
-    depth_index += 1
-    rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
-    temp = np.fromstring(rgb_data.data, np.uint8)
-    rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    temp = np.fromstring(depth_data.data, np.uint8)
-    depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    cv2.imwrite(rgb_img_path, rgb_img)
-    print('Wrote', rgb_index, 'RGB frame out.')
-    cv2.imwrite(depth_img_path, depth_img)
-    print('Wrote', depth_index, 'Depth frame out.')
-    print('============================================')
+    if record_status == False:
+        with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
+            json.dump(joy_record, outfile, ensure_ascii=False,
+                  sort_keys=False, indent=4)
+            outfile.write("\n")
+    else:
+        global rgb_index, depth_index
+        rgb_index += 1
+        depth_index += 1
+        rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
+        temp = np.fromstring(rgb_data.data, np.uint8)
+        rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
+        temp = np.fromstring(depth_data.data, np.uint8)
+        depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
+        cv2.imwrite(rgb_img_path, rgb_img)
+        print('Wrote', rgb_index, 'RGB frame out.')
+        cv2.imwrite(depth_img_path, depth_img)
+        print('Wrote', depth_index, 'Depth frame out.')
+        print('============================================')
 
 
 def proximity_callback(proximity_data):
     global proximity_sensor
     proximity_sensor = proximity_data.data
+
+
+def start_recording():
+    global rgb_index, depth_index
+    rgb_index = depth_index = 0
 
     
 def main():
@@ -161,10 +178,6 @@ def main():
         rospy.spin()
     except KeyboardInterrupt:
         pass
-    with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
-        json.dump(joy_record, outfile, ensure_ascii=False,
-                  sort_keys=False, indent=4)
-        outfile.write("\n")
 
 
 main()
