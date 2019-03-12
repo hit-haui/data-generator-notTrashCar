@@ -3,17 +3,15 @@ import os
 import sys
 import time
 import math
-import xbox
-
 import cv2
 import numpy as np
-
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 import message_filters
 import json
+import pygame
 
 try:
     os.chdir(os.path.dirname(__file__))
@@ -29,6 +27,18 @@ except:
 
 # depth_video_out_name = 'depth_output_{}.avi'.format(time.time())
 # depth_video_out = cv2.VideoWriter(depth_video_out_name, fourcc, 60, (320, 240))
+
+
+pygame.init()
+pygame.joystick.init()
+clock = pygame.time.Clock()
+joystick_count = pygame.joystick.get_count()
+for i in range(joystick_count):
+    joystick = pygame.joystick.Joystick(i)
+    joystick.init()
+    axes_number = joystick.get_numaxes()
+    buttons_number = joystick.get_numbuttons()
+
 
 
 def car_control(angle, speed):
@@ -63,44 +73,34 @@ def convert_to_angle(x, y):
     return angle
 
 
-joy = xbox.Joystick()
 reverse = False
 joy_start_time = 0.0
 joy_record = []
+max_speed = 100.0
+min_speed = 0.0
+
 
 
 def joy_stick_controller(index):
-    global joy, reverse
-    speed = angle = 0.0
-    x, y = joy.leftStick()
+    x = y = angle = speed = speed_up = speed_down = 0.0
+    # done = False
+    # while done == False:
+    x = joystick.get_axis(0)
+    y = -(joystick.get_axis(1))
     angle = convert_to_angle(x, y)
-    if joy.X() == 1:
-        reverse = True if reverse == False else False
-    if reverse:
-        if angle > 60 and angle <= 120:
-            angle = 60
-        elif angle >= -120 and angle < -60:
-            angle = -60
-    else:
-        if angle > 60 and angle <= 179.9:
-            angle = 60
-        elif angle >= -179.9 and angle < -60:
-            angle = -60
-    if joy.Y() == 0:
-        speed = 100
-        car_control(angle=angle, speed=speed)
-    else:
-        speed = 50
-        car_control(angle=angle, speed=speed)
-    if joy.A():
-        angle = 0
-        speed = 0
-        car_control(angle=angle, speed=speed)
-    joy_record.append({
-        'index': index,
-        'angle': angle,
-        'speed': speed,
-    })
+    if angle < -60:
+        angle = -60
+    if angle > 60:
+        angle = 60
+    speed_down = max_speed * joystick.get_axis(2)
+    speed_up = max_speed * joystick.get_axis(5)
+    speed = speed_up - speed_down
+    if speed > max_speed: speed = max_speed
+    if speed < min_speed: speed = min_speed
+    car_control(angle = angle, speed = speed)
+        # for event in pygame.event.get():
+        #     done=True 
+        # clock.tick(20)               
 
 
 rgb_index = 0
@@ -113,16 +113,19 @@ try:
 except:
     pass
 
+
 def image_callback(rgb_data, depth_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
+    print('Hello')
     global rgb_index, depth_index
     rgb_index += 1
     depth_index += 1
     joy_stick_controller(rgb_index)
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
+
     temp = np.fromstring(depth_data.data, np.uint8)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     cv2.imwrite(rgb_path + '{}_rgb.jpg'.format(rgb_index), rgb_img)
@@ -130,6 +133,9 @@ def image_callback(rgb_data, depth_data):
     cv2.imwrite(depth_path + '{}_rgb.jpg'.format(depth_index), depth_img)
     print('Wrote', depth_index, 'Depth frame out.')
     print('============================================')
+
+
+
 
 
 def main():
@@ -142,7 +148,6 @@ def main():
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
-
     try:
         rospy.spin()
     except KeyboardInterrupt:
@@ -155,5 +160,5 @@ def main():
                   sort_keys=False, indent=4)
         outfile.write("\n")
 
-
+    
 main()
