@@ -3,14 +3,13 @@ import os
 import sys
 import time
 import math
-import xbox
-
 import cv2
 import numpy as np
 
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Joy
 
 from std_msgs.msg import Float32, Bool
 import message_filters
@@ -51,32 +50,40 @@ def convert_to_angle(x, y):
     return float(-angle)
 
 
-joy = xbox.Joystick()
 reverse = False
 joy_start_time = 0.0
 joy_record = []
 emergency_brake = True
 proximity_sensor = True
 emergency_brake = True
+# (x,y): Left joystick, left_t: Break button, left_b: Emergency break, right_b: reverse button
+x = y = 0.0
+left_b = right_t = right_b = y_button = a_button = 0  
+default_speed = change_speed = 20
+max_speed = 100
+min_speed = 10
+
+
 
 
 def joy_stick_controller(index):
-    global joy, reverse, emergency_brake
+    global reverse, emergency_brake, change_speed
     speed = angle = 0.0
-    x, y = joy.leftStick()
     angle = convert_to_angle(x, y)
+    print('Angle before convert:', angle)
     print("Proximity:", proximity_sensor)
     print('Hand brake:', emergency_brake)
-    if joy.B() == 1:
+    print('Reverse:', reverse)
+    if left_b == 1:
         emergency_brake = True if emergency_brake == False else False
 
     if emergency_brake or proximity_sensor == False:
         angle = 0
         speed = 0
         car_control(angle=0, speed=0)
-
+    
     else:
-        if joy.X() == 1:
+        if right_b == 1:
             reverse = True if reverse == False else False
         if reverse:
             if angle > 60 and angle <= 120:
@@ -88,12 +95,25 @@ def joy_stick_controller(index):
                 angle = 60
             elif angle >= -179.9 and angle < -60:
                 angle = -60
-        if joy.Y() == 0:
-            speed = 10
-            car_control(angle=angle, speed=speed)
+
+        if y_button == 1:
+            change_speed += 10
+            if change_speed >= max_speed:
+                change_speed = max_speed
+
+        if a_button == 1:
+            change_speed -= 10
+            if change_speed < min_speed:
+                change_speed = min_speed
+                
+
+        if right_t == 1:
+            car_control(angle=angle, speed=change_speed)
         else:
-            speed = 5
-            car_control(angle=angle, speed=speed)
+            car_control(angle=angle,speed=default_speed)
+
+    
+
     
     rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
     depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
@@ -145,6 +165,18 @@ def proximity_callback(proximity_data):
     global proximity_sensor
     proximity_sensor = proximity_data.data
 
+def joy_callback(joy_data):
+    global x, y, left_b, right_b, right_t, y_button, a_button
+    for index in range(len(joy_data.axes)):
+        x = joy_data.axes[0]
+        y = joy_data.axes[1]
+        right_t = -(joy_data.axes[5])
+    for index in range(len(joy_data.buttons)):
+        a_button = joy_data.buttons[0]
+        y_button = joy_data.buttons[3]
+        left_b = joy_data.buttons[4]
+        right_b = joy_data.buttons[5]
+
     
 def main():
     rospy.init_node('team705_node', anonymous=True)
@@ -154,6 +186,7 @@ def main():
         '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**32)
     proximity_sub = rospy.Subscriber(
         '/ss_status', Bool, proximity_callback)
+    joy_sub = rospy.Subscriber("joy", Joy, joy_callback)
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
     ts.registerCallback(image_callback)
