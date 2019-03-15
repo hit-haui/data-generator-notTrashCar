@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import math
-import cv2
+
 import numpy as np
 
 import rospkg
@@ -14,7 +14,8 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Float32, Bool
 import message_filters
 import json
-
+sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
+import cv2
 
 def car_control(angle, speed):
     '''
@@ -59,11 +60,9 @@ emergency_brake = True
 # (x,y): Left joystick, left_t: Break button, left_b: Emergency break, right_b: reverse button
 x = y = 0.0
 left_b = right_t = right_b = y_button = a_button = 0  
-default_speed = change_speed = 20
-max_speed = 100
-min_speed = 10
-
-
+default_speed = change_speed = 8
+max_speed = 25
+min_speed = 8
 
 
 def joy_stick_controller(index):
@@ -97,25 +96,26 @@ def joy_stick_controller(index):
                 angle = -60
 
         if y_button == 1:
-            change_speed += 10
+            change_speed += 5
             if change_speed >= max_speed:
                 change_speed = max_speed
 
         if a_button == 1:
-            change_speed -= 10
+            change_speed -= 5
             if change_speed < min_speed:
                 change_speed = min_speed
                 
 
         if right_t == 1:
             if reverse == True:
-                change_speed = 100 - change_speed
-                car_control(angle=angle, speed=-change_speed)
+                #car_control(angle = 0, speed = 0 )
+               # change_speed = 100 - change_speed
+                car_control(angle=angle, speed=-90)
             else:
                 car_control(angle=angle, speed=change_speed)
         else:
-            car_control(angle=angle,speed=default_speed)
-
+         
+            car_control(angle=angle,speed=0)
     
 
     
@@ -153,6 +153,8 @@ def image_callback(rgb_data, depth_data):
     global rgb_index, depth_index
     rgb_index += 1
     depth_index += 1
+    if rgb_index == 1:
+        print("Called")
     rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
@@ -172,22 +174,23 @@ def proximity_callback(proximity_data):
 def joy_callback(joy_data):
     global x, y, left_b, right_b, right_t, y_button, a_button
     for index in range(len(joy_data.axes)):
-        x = joy_data.axes[0]
+        x = -(joy_data.axes[0])
         y = joy_data.axes[1]
-        right_t = -(joy_data.axes[5])
+        #right_t = -(joy_data.axes[5])
     for index in range(len(joy_data.buttons)):
         a_button = joy_data.buttons[0]
         y_button = joy_data.buttons[3]
         left_b = joy_data.buttons[4]
         right_b = joy_data.buttons[5]
+        right_t = joy_data.buttons[7]
 
     
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
-        '/camera/rgb/image_raw/compressed', CompressedImage, buff_size=2**32)
+        '/camera/rgb/image_raw/compressed', CompressedImage, buff_size=2**16)
     depth_sub = message_filters.Subscriber(
-        '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**32)
+        '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**16)
     proximity_sub = rospy.Subscriber(
         '/ss_status', Bool, proximity_callback)
     joy_sub = rospy.Subscriber("joy", Joy, joy_callback)
@@ -197,6 +200,7 @@ def main():
     try:
         rospy.spin()
     except KeyboardInterrupt:
+        car_control(angle=0, speed=0)
         pass
     with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
         json.dump(joy_record, outfile, ensure_ascii=False,
