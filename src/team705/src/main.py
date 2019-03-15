@@ -108,7 +108,11 @@ def joy_stick_controller(index):
                 
 
         if right_t == 1:
-            car_control(angle=angle, speed=change_speed)
+            if reverse == True:
+                change_speed = 100 - change_speed
+                car_control(angle=angle, speed=-change_speed)
+            else:
+                car_control(angle=angle, speed=change_speed)
         else:
             car_control(angle=angle,speed=default_speed)
 
