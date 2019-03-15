@@ -98,7 +98,7 @@ def joy_stick_controller(index):
 
     if joy.leftBumper() == 1:
         record_status = not record_status
-        start_recording()
+        reset_recording()
 
     if record_status == True:    
         rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
@@ -132,13 +132,13 @@ def image_callback(rgb_data, depth_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
-    if record_status == False:
+    global rgb_index, depth_index
+    if record_status == False and rgb_index > 0:
         with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
             json.dump(joy_record, outfile, ensure_ascii=False,
                   sort_keys=False, indent=4)
             outfile.write("\n")
-    else:
-        global rgb_index, depth_index
+    elif record_status == True:
         rgb_index += 1
         depth_index += 1
         rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
@@ -158,7 +158,7 @@ def proximity_callback(proximity_data):
     proximity_sensor = proximity_data.data
 
 
-def start_recording():
+def reset_recording():
     global rgb_index, depth_index
     rgb_index = depth_index = 0
 
