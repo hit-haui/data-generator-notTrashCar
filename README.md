@@ -17,32 +17,6 @@ pip3 install -r requirements.txt
 - Newest version of Unity Simulator from FPT: https://goo.gl/EcHGUs
 - Tay cầm Xbox 360
 
-- Router wifi để thiết lập mạng local cho xe và MASTER PC, ưu tiên sử dụng mạng 5GHz
-
-- Tay cầm Xbox 360
-
-- Download code điều khiển của xe tại đây, giải nén ra tại thư mục `HOME` của board Jeston trên xe.
-
-- Config MASTER PC và board mạch của xe bằng cách thêm vào cuối file `.bashrc` nội dung sau:
-    - Trên MASTER PC:
-    ```bash
-    export ROS_MASTER_URL=http://localhost:11311/
-    export ROS_HOSTNAME=<Local IP của MASTER PC>
-    export ROS_IP=<Local IP của MASTER PC>
-    ```
-    Lập lại bước trên với `.bashrc` nằm trên vị trí `~/.bashrc` của user `root` của MASTER PC
-    ```bash
-    sudo su
-    nano ~/.bashrc
-    ...
-    ```
-    `Ctrl + X` -> `Y` -> `Enter` để save.
-    - Trên mạch xe (có thể SSH vào để chỉnh sửa):
-    ```bash
-    export ROS_MASTER_URL=http://<Local IP của MASTER PC>:11311/
-    export ROS_HOSTNAME=<Local IP của xe>
-    export ROS_IP=<Local IP của xe>
-    ```
 ## Cách run
 
 - Đầu tiên build lại package `team705`:
