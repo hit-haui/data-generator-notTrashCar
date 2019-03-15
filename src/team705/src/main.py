@@ -11,7 +11,7 @@ import rospy
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Joy
 
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, String
 import message_filters
 import json
 sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
@@ -27,6 +27,9 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
+def lcd_print(s):
+    lcd = rospy.Publisher('/lcd_print', String , queue_size=10)
+    lcd.publish(s)
 
 def convert_to_angle(x, y):
     angle = 0.0
@@ -73,6 +76,11 @@ def joy_stick_controller(index):
     print("Proximity:", proximity_sensor)
     print('Hand brake:', emergency_brake)
     print('Reverse:', reverse)
+    if reverse == False:
+    	lcd_print('1:2: >>>>FORWARD<<<<')
+    else:
+        lcd_print('1:2: >>>>REVERSE<<<<')
+
     if left_b == 1:
         emergency_brake = True if emergency_brake == False else False
 
@@ -80,7 +88,7 @@ def joy_stick_controller(index):
         angle = 0
         speed = 0
         car_control(angle=0, speed=0)
-    
+        lcd_print('1:2: ')
     else:
         if right_b == 1:
             reverse = True if reverse == False else False
@@ -111,13 +119,15 @@ def joy_stick_controller(index):
                 #car_control(angle = 0, speed = 0 )
                # change_speed = 100 - change_speed
                 car_control(angle=angle, speed=-90)
+                
             else:
                 car_control(angle=angle, speed=change_speed)
+                lcd_print('1:2: FORWARD')
         else:
          
             car_control(angle=angle,speed=0)
-    
-
+            
+        lcd_print('1:2: ') 
     
     rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
     depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
