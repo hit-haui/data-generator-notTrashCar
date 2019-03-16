@@ -11,7 +11,7 @@ def joy_callback(joy_data):
     
 
 def start():
-    rospy.Subscriber("joy", Joy, joy_callback)
+    rospy.Subscriber("/joy", Joy, joy_callback)
     rospy.init_node('Joy2Turtle')
     rospy.spin()
 

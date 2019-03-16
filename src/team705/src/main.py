@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import math
-import cv2
+
 import numpy as np
 
 import rospkg
@@ -14,7 +14,8 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Float32, Bool, String
 import message_filters
 import json
-
+sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
+import cv2
 
 def car_control(angle, speed):
     '''
@@ -28,11 +29,6 @@ def car_control(angle, speed):
 
 def lcd_print(s):
     lcd = rospy.Publisher('/lcd_print', String , queue_size=10)
-    lcd.publish(s)
-
-
-def lcd_print(s):
-    lcd = rospy.Publisher('/lcd_print', String, queue_size=10)
     lcd.publish(s)
 
 
@@ -62,10 +58,12 @@ def convert_to_angle(x, y):
 reverse = False
 joy_start_time = 0.0
 joy_record = []
+bt1_sensor = False
 emergency_brake = True
 proximity_sensor = True
 emergency_brake = True
 start_gendata = False
+button_status = 0
 # (x,y): Left joystick, left_t: Break button, left_b: Emergency break, right_b: reverse button
 x = y = 0.0
 left_b = right_t = right_b = y_button = a_button = start_button = 0
@@ -75,7 +73,7 @@ min_speed = 8
 
 
 def joy_stick_controller(index):
-    global reverse, emergency_brake, change_speed
+    global reverse, emergency_brake, change_speed,button_status
     speed = angle = 0.0
     angle = convert_to_angle(x, y)
     print('Angle before convert:', angle)
@@ -84,18 +82,21 @@ def joy_stick_controller(index):
     print('Reverse:', reverse)
     if reverse == False:
         lcd_print('1:2: >>>>FORWARD<<<<')
+        print('BUTTON:', bt1_sensor)
     else:
         lcd_print('1:2: >>>>REVERSE<<<<')
 
     if left_b == 1:
         emergency_brake = True if emergency_brake == False else False
-
-    if emergency_brake or proximity_sensor == False:
+    if bt1_sensor == True and button_status == 0 :
+        button_status = 1
+    elif bt1_sensor == True and button_status == 1 :
+        button_status=0
+    if emergency_brake or proximity_sensor == False or button_status==1 :
         angle = 0
         speed = 0
         car_control(angle=0, speed=0)
-        lcd_print('1:2: ')
-
+        lcd_print('1:2:STOPED')
     else:
         if right_b == 1:
             reverse = True if reverse == False else False
@@ -143,13 +144,10 @@ def joy_stick_controller(index):
             'proximity value': proximity_sensor
         })
         return rgb_img_path, depth_img_path
-
-
+ 
+  
 rgb_index = 0
 depth_index = 0
-# output_path = './dataset_{}/'.format(time.time())
-# rgb_path = os.path.join(output_path, 'rgb')
-# depth_path = os.path.join(output_path, 'depth')
 output_path = rgb_path = depth_path = ''
 
 
@@ -177,7 +175,7 @@ def image_callback(rgb_data, depth_data):
         rgb_index += 1
         depth_index += 1
         if rgb_index == 1 and depth_index == 1:
-            output_path = '/home/dejavu/Desktop/dataset_{}/'.format(
+            output_path = '/home/nvidia/Desktop/dataset_{}/'.format(
                 time.time())
             rgb_path = os.path.join(output_path, 'rgb')
             depth_path = os.path.join(output_path, 'depth')
@@ -197,6 +195,9 @@ def image_callback(rgb_data, depth_data):
         print('Wrote', depth_index, 'Depth frame out.')
         print('============================================')
 
+def bt1_callback(bt1_data):
+    global bt1_sensor
+    bt1_sensor = bt1_data.data
 
 def proximity_callback(proximity_data):
     global proximity_sensor
@@ -208,7 +209,7 @@ def joy_callback(joy_data):
     global start_button, start_dump
 
     for index in range(len(joy_data.axes)):
-        x = joy_data.axes[0]
+        x = -(joy_data.axes[0])
         y = joy_data.axes[1]
         right_t = -(joy_data.axes[5])
     for index in range(len(joy_data.buttons)):
@@ -220,15 +221,17 @@ def joy_callback(joy_data):
     if start_button == 1:
         start_gendata = True if start_gendata == False else False
 
-
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
-        '/camera/rgb/image_raw/compressed', CompressedImage, buff_size=2**32)
+        '/camera/rgb/image_raw/compressed', CompressedImage, buff_size=2**16)
     depth_sub = message_filters.Subscriber(
-        '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**32)
+        '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**16)
     proximity_sub = rospy.Subscriber(
         '/ss_status', Bool, proximity_callback)
+    bt1_sub = rospy.Subscriber(
+        '/bt1_status', Bool, bt1_callback)
+    
     joy_sub = rospy.Subscriber("joy", Joy, joy_callback)
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
@@ -236,6 +239,7 @@ def main():
     try:
         rospy.spin()
     except KeyboardInterrupt:
+        car_control(angle=0, speed=0)
         pass
 
 
