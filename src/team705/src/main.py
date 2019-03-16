@@ -11,7 +11,7 @@ import rospy
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Joy
 
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, String
 import message_filters
 import json
 
@@ -25,6 +25,15 @@ def car_control(angle, speed):
     pub_angle = rospy.Publisher('/set_steer_car_api', Float32, queue_size=10)
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
+
+def lcd_print(s):
+    lcd = rospy.Publisher('/lcd_print', String , queue_size=10)
+    lcd.publish(s)
+
+
+def lcd_print(s):
+    lcd = rospy.Publisher('/lcd_print', String, queue_size=10)
+    lcd.publish(s)
 
 
 def convert_to_angle(x, y):
@@ -56,14 +65,13 @@ joy_record = []
 emergency_brake = True
 proximity_sensor = True
 emergency_brake = True
+start_gendata = False
 # (x,y): Left joystick, left_t: Break button, left_b: Emergency break, right_b: reverse button
 x = y = 0.0
-left_b = right_t = right_b = y_button = a_button = 0  
-default_speed = change_speed = 20
-max_speed = 100
-min_speed = 10
-
-
+left_b = right_t = right_b = y_button = a_button = start_button = 0
+default_speed = change_speed = 8
+max_speed = 25
+min_speed = 8
 
 
 def joy_stick_controller(index):
@@ -74,6 +82,11 @@ def joy_stick_controller(index):
     print("Proximity:", proximity_sensor)
     print('Hand brake:', emergency_brake)
     print('Reverse:', reverse)
+    if reverse == False:
+        lcd_print('1:2: >>>>FORWARD<<<<')
+    else:
+        lcd_print('1:2: >>>>REVERSE<<<<')
+
     if left_b == 1:
         emergency_brake = True if emergency_brake == False else False
 
@@ -81,7 +94,8 @@ def joy_stick_controller(index):
         angle = 0
         speed = 0
         car_control(angle=0, speed=0)
-    
+        lcd_print('1:2: ')
+
     else:
         if right_b == 1:
             reverse = True if reverse == False else False
@@ -97,80 +111,102 @@ def joy_stick_controller(index):
                 angle = -60
 
         if y_button == 1:
-            change_speed += 10
+            change_speed += 5
             if change_speed >= max_speed:
                 change_speed = max_speed
 
         if a_button == 1:
-            change_speed -= 10
+            change_speed -= 5
             if change_speed < min_speed:
                 change_speed = min_speed
-                
 
         if right_t == 1:
             if reverse == True:
-                change_speed = 100 - change_speed
-                car_control(angle=angle, speed=-change_speed)
+                car_control(angle=angle, speed=-90)
             else:
                 car_control(angle=angle, speed=change_speed)
+                lcd_print('1:2: FORWARD')
+
         else:
-            car_control(angle=angle,speed=default_speed)
+            car_control(angle=angle, speed=0)
+        lcd_print('1:2: ') 
 
-    
+    if index != 0:
+        rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
+        depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
+        joy_record.append({
+            'index': index,
+            'rgb_img_path': rgb_img_path,
+            'depth_img_path': depth_img_path,
+            'angle': angle,
+            'speed': speed,
+            'proximity value': proximity_sensor
+        })
+        return rgb_img_path, depth_img_path
 
-    
-    rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
-    depth_img_path = os.path.join(depth_path, '{}_depth.jpg'.format(index))
-    joy_record.append({
-        'index': index,
-        'rgb_img_path': rgb_img_path,
-        'depth_img_path': depth_img_path,
-        'angle': angle,
-        'speed': speed,
-        'proximity value': proximity_sensor
-    })
-    return rgb_img_path, depth_img_path
 
-  
 rgb_index = 0
 depth_index = 0
-output_path = './dataset_{}/'.format(time.time())
-rgb_path = os.path.join(output_path, 'rgb')
-depth_path = os.path.join(output_path, 'depth')
-
-
-try:
-    os.makedirs(rgb_path)
-    os.makedirs(depth_path)
-except:
-    pass
+# output_path = './dataset_{}/'.format(time.time())
+# rgb_path = os.path.join(output_path, 'rgb')
+# depth_path = os.path.join(output_path, 'depth')
+output_path = rgb_path = depth_path = ''
 
 
 def image_callback(rgb_data, depth_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
-    global rgb_index, depth_index
-    rgb_index += 1
-    depth_index += 1
-    rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
-    temp = np.fromstring(rgb_data.data, np.uint8)
-    rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    temp = np.fromstring(depth_data.data, np.uint8)
-    depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    cv2.imwrite(rgb_img_path, rgb_img)
-    print('Wrote', rgb_index, 'RGB frame out.')
-    cv2.imwrite(depth_img_path, depth_img)
-    print('Wrote', depth_index, 'Depth frame out.')
-    print('============================================')
+    global rgb_index, depth_index, output_path, rgb_path, depth_path
+    print('start button: ', start_button)
+    print('start gen data: ', start_gendata)
+    if start_dump == False:
+        with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
+            json.dump(joy_record, outfile, ensure_ascii=False,
+                      sort_keys=False, indent=4)
+            outfile.write("\n")
+        joy_record.clear()
+        rgb_index = depth_index = 0
+        output_path = ''
+        rgb_path = ''
+        depth_path = ''
+        joy_stick_controller(0)
+        print("Do not write img")
+        print('----------------')
+    else:
+        rgb_index += 1
+        depth_index += 1
+        if rgb_index == 1 and depth_index == 1:
+            output_path = '/home/dejavu/Desktop/dataset_{}/'.format(
+                time.time())
+            rgb_path = os.path.join(output_path, 'rgb')
+            depth_path = os.path.join(output_path, 'depth')
+            try:
+                os.makedirs(rgb_path)
+                os.makedirs(depth_path)
+            except:
+                pass
+        rgb_img_path, depth_img_path = joy_stick_controller(rgb_index)
+        temp = np.fromstring(rgb_data.data, np.uint8)
+        rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
+        temp = np.fromstring(depth_data.data, np.uint8)
+        depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
+        cv2.imwrite(rgb_img_path, rgb_img)
+        print('Wrote', rgb_index, 'RGB frame out.')
+        cv2.imwrite(depth_img_path, depth_img)
+        print('Wrote', depth_index, 'Depth frame out.')
+        print('============================================')
 
 
 def proximity_callback(proximity_data):
     global proximity_sensor
     proximity_sensor = proximity_data.data
 
+
 def joy_callback(joy_data):
     global x, y, left_b, right_b, right_t, y_button, a_button
+    global start_button, start_dump
+
     for index in range(len(joy_data.axes)):
         x = joy_data.axes[0]
         y = joy_data.axes[1]
@@ -180,8 +216,11 @@ def joy_callback(joy_data):
         y_button = joy_data.buttons[3]
         left_b = joy_data.buttons[4]
         right_b = joy_data.buttons[5]
+        start_button = joy_data.buttons[7]
+    if start_button == 1:
+        start_gendata = True if start_gendata == False else False
 
-    
+
 def main():
     rospy.init_node('team705_node', anonymous=True)
     rgb_sub = message_filters.Subscriber(
@@ -198,10 +237,6 @@ def main():
         rospy.spin()
     except KeyboardInterrupt:
         pass
-    with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
-        json.dump(joy_record, outfile, ensure_ascii=False,
-                  sort_keys=False, indent=4)
-        outfile.write("\n")
 
 
 main()
