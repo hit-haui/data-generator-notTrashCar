@@ -57,25 +57,28 @@ def convert_to_angle(x, y):
 reverse = False
 joy_start_time = 0.0
 joy_record = []
+bt1_sensor = False
 emergency_brake = True
 proximity_sensor = True
 emergency_brake = True
+button_status = 0
 # (x,y): Left joystick, left_t: Break button, left_b: Emergency break, right_b: reverse button
 x = y = 0.0
 left_b = right_t = right_b = y_button = a_button = 0  
 default_speed = change_speed = 8
 max_speed = 25
 min_speed = 8
-
+ 
 
 def joy_stick_controller(index):
-    global reverse, emergency_brake, change_speed
+    global reverse, emergency_brake, change_speed,button_status
     speed = angle = 0.0
     angle = convert_to_angle(x, y)
     print('Angle before convert:', angle)
     print("Proximity:", proximity_sensor)
     print('Hand brake:', emergency_brake)
     print('Reverse:', reverse)
+    print('BUTTON:', bt1_sensor)
     if reverse == False:
     	lcd_print('1:2: >>>>FORWARD<<<<')
     else:
@@ -83,8 +86,11 @@ def joy_stick_controller(index):
 
     if left_b == 1:
         emergency_brake = True if emergency_brake == False else False
-
-    if emergency_brake or proximity_sensor == False:
+    if bt1_sensor == True and button_status == 0 :
+        button_status = 1
+    elif bt1_sensor == True and button_status == 1 :
+        button_status=0
+    if emergency_brake or proximity_sensor == False or button_status==1 :
         angle = 0
         speed = 0
         car_control(angle=0, speed=0)
@@ -176,6 +182,9 @@ def image_callback(rgb_data, depth_data):
     print('Wrote', depth_index, 'Depth frame out.')
     print('============================================')
 
+def bt1_callback(bt1_data):
+    global bt1_sensor
+    bt1_sensor = bt1_data.data
 
 def proximity_callback(proximity_data):
     global proximity_sensor
@@ -203,6 +212,9 @@ def main():
         '/camera/depth/image_raw/compressed/', CompressedImage, buff_size=2**16)
     proximity_sub = rospy.Subscriber(
         '/ss_status', Bool, proximity_callback)
+    bt1_sub = rospy.Subscriber(
+        '/bt1_status', Bool, bt1_callback)
+    
     joy_sub = rospy.Subscriber("joy", Joy, joy_callback)
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
