@@ -70,7 +70,7 @@ left_b = right_t = right_b = y_button = a_button = start_button = 0
 default_speed = change_speed = 8
 max_speed = 25
 min_speed = 8
-
+start_gendata = False
 
 def joy_stick_controller(index):
     global reverse, emergency_brake, change_speed,button_status
@@ -158,7 +158,7 @@ def image_callback(rgb_data, depth_data):
     global rgb_index, depth_index, output_path, rgb_path, depth_path
     print('start button: ', start_button)
     print('start gen data: ', start_gendata)
-    if start_dump == False:
+    if start_gendata == False:
         with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
             json.dump(joy_record, outfile, ensure_ascii=False,
                       sort_keys=False, indent=4)
@@ -206,18 +206,19 @@ def proximity_callback(proximity_data):
 
 def joy_callback(joy_data):
     global x, y, left_b, right_b, right_t, y_button, a_button
-    global start_button, start_dump
+    global start_button, start_gendata
 
     for index in range(len(joy_data.axes)):
         x = -(joy_data.axes[0])
         y = joy_data.axes[1]
-        right_t = -(joy_data.axes[5])
+        #right_t = -(joy_data.axes[5])
     for index in range(len(joy_data.buttons)):
         a_button = joy_data.buttons[0]
         y_button = joy_data.buttons[3]
         left_b = joy_data.buttons[4]
         right_b = joy_data.buttons[5]
-        start_button = joy_data.buttons[7]
+        right_t = joy_data.buttons[7]
+        start_button = joy_data.buttons[9]
     if start_button == 1:
         start_gendata = True if start_gendata == False else False
 
