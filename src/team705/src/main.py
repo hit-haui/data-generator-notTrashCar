@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import cv2
 import os
 import sys
 import time
@@ -14,8 +15,8 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Float32, Bool, String
 import message_filters
 import json
-sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
-import cv2
+sys.path.remove('/opt/ros/melodic/lib/python2.7/dist-packages')
+
 
 def car_control(angle, speed):
     '''
@@ -27,8 +28,9 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
+
 def lcd_print(s):
-    lcd = rospy.Publisher('/lcd_print', String , queue_size=10)
+    lcd = rospy.Publisher('/lcd_print', String, queue_size=10)
     lcd.publish(s)
 
 
@@ -59,9 +61,8 @@ reverse = False
 joy_start_time = 0.0
 joy_record = []
 bt1_sensor = False
-emergency_brake = True
 proximity_sensor = True
-emergency_brake = True
+hand_brake = True
 start_gendata = False
 button_status = 0
 # (x,y): Left joystick, left_t: Break button, left_b: Emergency break, right_b: reverse button
@@ -72,31 +73,39 @@ max_speed = 25
 min_speed = 8
 start_gendata = False
 
+
 def joy_stick_controller(index):
-    global reverse, emergency_brake, change_speed,button_status
+    global reverse, hand_brake, change_speed, button_status, proximity_sensor
     speed = angle = 0.0
     angle = convert_to_angle(x, y)
-    print('Angle before convert:', angle)
     print("Proximity:", proximity_sensor)
-    print('Hand brake:', emergency_brake)
+    print('Hand brake:', hand_brake)
     print('Reverse:', reverse)
     if reverse == False:
+        lcd_print('1:2: ')
         lcd_print('1:2: >>>>FORWARD<<<<')
         print('BUTTON:', bt1_sensor)
     else:
+        lcd_print('1:2: ')
         lcd_print('1:2: >>>>REVERSE<<<<')
 
     if left_b == 1:
-        emergency_brake = True if emergency_brake == False else False
-    if bt1_sensor == True and button_status == 0 :
+        hand_brake = True if hand_brake == False else False
+    if bt1_sensor == True and button_status == 0:
         button_status = 1
-    elif bt1_sensor == True and button_status == 1 :
-        button_status=0
-    if emergency_brake or proximity_sensor == False or button_status==1 :
+    elif bt1_sensor == True and button_status == 1:
+        button_status = 0
+    if hand_brake or proximity_sensor == False or button_status == 1:
         angle = 0
         speed = 0
         car_control(angle=0, speed=0)
-        lcd_print('1:2:STOPED')
+        lcd_print('1:2: ')
+        if hand_brake:
+            lcd_print('1:2: HAND BRAKE')
+        elif proximity_sensor == False:
+            lcd_print('1:2: SENSOR BRAKE')
+        elif button_status == 1:
+            lcd_print('1:2: BUTTON BOARD BRAKE')
     else:
         if right_b == 1:
             reverse = True if reverse == False else False
@@ -112,12 +121,12 @@ def joy_stick_controller(index):
                 angle = -60
 
         if y_button == 1:
-            change_speed += 5
+            change_speed += 2
             if change_speed >= max_speed:
                 change_speed = max_speed
 
         if a_button == 1:
-            change_speed -= 5
+            change_speed -= 2
             if change_speed < min_speed:
                 change_speed = min_speed
 
@@ -126,11 +135,14 @@ def joy_stick_controller(index):
                 car_control(angle=angle, speed=-90)
             else:
                 car_control(angle=angle, speed=change_speed)
+                lcd_print('1:2: ')
                 lcd_print('1:2: FORWARD')
 
         else:
             car_control(angle=angle, speed=0)
-        lcd_print('1:2: ') 
+            #car_control(angle=angle, speed=default_speed)
+            
+        lcd_print('1:2: ')
 
     if index != 0:
         rgb_img_path = os.path.join(rgb_path, '{}_rgb.jpg'.format(index))
@@ -141,11 +153,15 @@ def joy_stick_controller(index):
             'depth_img_path': depth_img_path,
             'angle': angle,
             'speed': speed,
-            'proximity value': proximity_sensor
+            'proximity value': proximity_sensor,
+            'hand brake': hand_brake,
+            'reverse': reverse,
+            'button in board': button_status,
+            'right_t': right_t
         })
         return rgb_img_path, depth_img_path
- 
-  
+
+
 rgb_index = 0
 depth_index = 0
 output_path = rgb_path = depth_path = ''
@@ -159,6 +175,8 @@ def image_callback(rgb_data, depth_data):
     print('start button: ', start_button)
     print('start gen data: ', start_gendata)
     if start_gendata == False:
+        lcd_print('1:2: ')
+        lcd_print('1:2: STOPGENDATA')
         with open(os.path.join(output_path, 'label.json'), 'w', encoding='utf-8') as outfile:
             json.dump(joy_record, outfile, ensure_ascii=False,
                       sort_keys=False, indent=4)
@@ -172,6 +190,8 @@ def image_callback(rgb_data, depth_data):
         print("Do not write img")
         print('----------------')
     else:
+        lcd_print('1:2: ')
+        lcd_print('1:2: STARTGENDATA')
         rgb_index += 1
         depth_index += 1
         if rgb_index == 1 and depth_index == 1:
@@ -195,9 +215,11 @@ def image_callback(rgb_data, depth_data):
         print('Wrote', depth_index, 'Depth frame out.')
         print('============================================')
 
+
 def bt1_callback(bt1_data):
     global bt1_sensor
     bt1_sensor = bt1_data.data
+
 
 def proximity_callback(proximity_data):
     global proximity_sensor
@@ -209,9 +231,8 @@ def joy_callback(joy_data):
     global start_button, start_gendata
 
     for index in range(len(joy_data.axes)):
-        x = -(joy_data.axes[0])
-        y = joy_data.axes[1]
-        #right_t = -(joy_data.axes[5])
+        x = -(joy_data.axes[2])
+        y = joy_data.axes[3]
     for index in range(len(joy_data.buttons)):
         a_button = joy_data.buttons[0]
         y_button = joy_data.buttons[3]
@@ -221,6 +242,7 @@ def joy_callback(joy_data):
         start_button = joy_data.buttons[9]
     if start_button == 1:
         start_gendata = True if start_gendata == False else False
+
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
@@ -232,7 +254,7 @@ def main():
         '/ss_status', Bool, proximity_callback)
     bt1_sub = rospy.Subscriber(
         '/bt1_status', Bool, bt1_callback)
-    
+
     joy_sub = rospy.Subscriber("joy", Joy, joy_callback)
     ts = message_filters.ApproximateTimeSynchronizer(
         [rgb_sub, depth_sub], queue_size=1, slop=0.1)
