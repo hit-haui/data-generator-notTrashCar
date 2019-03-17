@@ -1,0 +1,12 @@
+trap "exit" INT TERM ERR SIGINT SIGTERM
+trap "kill 0" EXIT
+
+#cd catkin_ws
+#source ~/.bashrc &
+#source ~/catkin_ws/devel/setup.bash &
+rosrun car_controller car_controller_node &
+rosrun hal hal_node &
+d 
+roslaunch astra_camera astra.launch
+
+wait

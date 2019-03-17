@@ -1,0 +1,8 @@
+cd catkin_ws
+rm -rf devel/
+catkin_make
+source devel/setup.bash
+sudo chown root:root ./devel/lib/car_controller/car_controller_node
+sudo chmod a+rx ./devel/lib/car_controller/car_controller_node
+sudo chmod u+s ./devel/lib/car_controller/car_controller_node
+rosrun car_controller car_controller_node
