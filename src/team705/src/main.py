@@ -20,8 +20,8 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.3
 set_session(tf.Session(config=config))
 
 graph = tf.get_default_graph()
-model_traffic = load_model('/home/vicker/Downloads/detect2_traffic-016-0.98212.hdf5')
-model_cnn = load_model('/home/vicker/Downloads/read_data_2chanel-054-524.97807.hdf5')
+model_traffic = load_model('/home/nvidia/detect2_traffic-016-0.98212.hdf5')
+model_cnn = load_model('/home/nvidia/read_data_2chanel-054-524.97807.hdf5')
 
 
 print('Loaded model')
@@ -176,7 +176,6 @@ def main():
     depth_sub = rospy.Subscriber('/camera/depth/image_raw/compressed/', 
      CompressedImage, image_callback , buff_size=2**16, queue_size=1)
     
->>>>>>> 55a7353161a1f46a4668693a6920e6de17df2279
     try:
         rospy.spin()
     except KeyboardInterrupt:
