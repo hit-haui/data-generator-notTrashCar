@@ -137,9 +137,9 @@ def predict_angle(img_rgb, img_depth):
     hd,wd = img_depth.shape
     img_depth = img_depth[hd//2:hd,:wd]
     img_list.append(np.dstack((img_rgb,img_depth)))
-
-
-    return model_cnn.predict([img_list,traffics_list])[0][0]
+    with graph.as_default():
+        angle = model_cnn.predict([img_list,traffics_list])[0][0]
+    return angle
 
 
 def image_callback(rgb_data):
