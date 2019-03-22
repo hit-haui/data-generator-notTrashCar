@@ -12,7 +12,7 @@ import rospy
 import tensorflow as tf
 from keras.models import load_model
 from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool, String
 
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
@@ -46,7 +46,16 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
+def lcd_print(s):
+    lcd = rospy.Publisher('/lcd_print', String, queue_size=10)
+    lcd.publish(s)
 
+proximity_sensor = True
+bt1_sensor = bt2_sensor = bt3_sensor = bt4_sensor = False
+hand_brake = True
+default_speed = 8
+max_speed = 15
+max_speed_mode = False
 
 def get_predict(img):
     s = img.shape
@@ -146,19 +155,55 @@ def image_callback(rgb_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
-    global rgb_index, depth_index
+    global rgb_index, depth_index, hand_brake, max_speed_mode
     start_time = time.time()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     angle = predict_angle(rgb_img,depth_img)
-    car_control(angle=angle-60, speed=9)
+    if bt1_sensor == True:
+        hand_brake = True if hand_brake == False else False
+    print(hand_brake)
+    if hand_brake == True:
+        lcd_print('1:2: HANDBRAKE')
+        car_control(angle=0, speed=0)
+    if hand_brake == False and proximity_sensor == False:
+        lcd_print('1:2:                    ')
+        while proximity_sensor == False:
+            lcd_print('1:2: PROXIMITY')
+            car_control(angle = angle-60, speed = -90)
+        lcd_print('1:2:                   ')
+    if hand_brake == False and proximity_sensor == True:
+        if bt3_sensor == True:
+            max_speed_mode = True if max_speed_mode == False else False
+        if max_speed_mode:
+            lcd_print('1:2:  MAXSPEED')
+            car_control(angle=angle-60, speed=max_speed)
+        else:
+            lcd_print('1:2:  MINSPEED')
+            car_control(angle=angle-60, speed=default_speed)
     print("FPS:",1/(time.time()-start_time))
 
 
 def proximity_callback(proximity_data):
     global proximity_sensor
     proximity_sensor = proximity_data.data
+
+def bt1_callback(bt1_data):
+    global bt1_sensor
+    bt1_sensor = bt1_data.data
+
+def bt2_callback(bt2_data):
+    global bt2_sensor
+    bt2_sensor = bt2_data.data
+
+def bt3_callback(bt3_data):
+    global bt3_sensor
+    bt3_sensor = bt3_data.data
+
+def bt4_callback(bt4_data):
+    global bt4_sensor
+    bt4_sensor = bt4_data.data
 
 
 def main():
@@ -175,6 +220,11 @@ def main():
      CompressedImage, image_callback , buff_size=2**16, queue_size=1)
     depth_sub = rospy.Subscriber('/camera/depth/image_raw/compressed/', 
      CompressedImage, image_callback , buff_size=2**16, queue_size=1)
+    proximity_sub = rospy.Subscriber('/ss_status', Bool, proximity_callback)
+    bt1_sub = rospy.Subscriber('/bt1_status', Bool, bt1_callback)
+    bt2_sub = rospy.Subscriber('/bt2_status', Bool, bt2_callback)
+    bt3_sub = rospy.Subscriber('/bt3_status', Bool, bt3_callback)
+    bt4_sub = rospy.Subscriber('/bt4_status', Bool, bt4_callback)
     
     try:
         rospy.spin()
