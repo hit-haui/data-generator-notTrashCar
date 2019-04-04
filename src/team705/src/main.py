@@ -178,17 +178,17 @@ def image_callback(rgb_data):
         lcd_print('1:2:                    ')
         while proximity_sensor == False:
             lcd_print('1:2: PROXIMITY')
-            car_control(angle = angle-60, speed = -90)
+            car_control(angle = angle, speed = -90)
         lcd_print('1:2:                   ')
     if hand_brake == False and proximity_sensor == True:
         if bt3_sensor == True:
             max_speed_mode = True if max_speed_mode == False else False
         if max_speed_mode:
             lcd_print('1:2:  MAXSPEED')
-            car_control(angle=angle-60, speed=max_speed)
+            car_control(angle=angle, speed=max_speed)
         else:
             lcd_print('1:2:  MINSPEED')
-            car_control(angle=angle-60, speed=default_speed)
+            car_control(angle=angle, speed=default_speed)
     print("FPS:",1/(time.time()-start_time))
 
 
