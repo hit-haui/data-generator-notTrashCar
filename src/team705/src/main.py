@@ -57,6 +57,7 @@ default_speed = 8
 max_speed = 15
 max_speed_mode = False
 
+
 def get_predict(img):
     s = img.shape
     img = img[:s[0]//2, :]
@@ -82,7 +83,7 @@ def get_predict(img):
     right = 0
     # ensure at least some circles were found
     if circles is not None and np.sum(circles) > 0:
-        print('tes')
+        print('have circle')
         # convert the (x, y) coordinates and radius of the circles to integers
         circles = np.round(circles[0, :]).astype("int")
         # print('Got', len(circles), 'circles')
@@ -113,25 +114,25 @@ def get_predict(img):
                 l = traffic_list[0]
                 n = traffic_list[1]
                 r = traffic_list[2]
-                print(l,r,n)
+                #print(l,r,n)
                 if max(l,max(n,r)) == traffic_list[0]:
                     left +=1
                 elif max(l, max(n, r)) == traffic_list[1]:
                     none +=1
                 elif max(l, max(n, r)) == traffic_list[2]:
                     right +=1
-    if left > right:
+    if max(left,right) == left:
         print('Left traffic')
-        return np.array([0,1,0])
-    elif left < right:
+        return np.array([100,0,0])
+    elif max(left,right) == right:
         print('Right traffic')
-        return np.array([0,0,1])
-    else:
+        return np.array([0,0,100])
+    elif left and right == none:
         print('no traffic')
-        return np.array([0, 0, 0])
+        return np.array([0, 100, 0])
 
 
-def predict_angle(img_rgb, img_depth):
+def predict_angle(img_rgb):
     img_list = []
     traffics_list = []
     #predict traffic
@@ -142,12 +143,10 @@ def predict_angle(img_rgb, img_depth):
     h,w,_ = img_rgb.shape
     img_rgb = img_rgb[h//2:h,:w]
     img_rgb = cv2.cvtColor(img_rgb,cv2.COLOR_BGR2GRAY)
-    img_depth = cv2.cvtColor(img_depth,cv2.COLOR_RGB2GRAY)
-    hd,wd = img_depth.shape
-    img_depth = img_depth[hd//2:hd,:wd]
-    img_list.append(np.dstack((img_rgb,img_depth)))
+    img_rgb = np.expand_dims(img_rgb, axis = 2)
+    img_list.append(img_rgb)
     with graph.as_default():
-        angle = model_cnn.predict([img_list,traffics_list])[0][0]
+        angle = model_cnn.predict([img_list,traffics_list])[0]
     return angle
 
 
@@ -160,7 +159,15 @@ def image_callback(rgb_data):
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     depth_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    angle = predict_angle(rgb_img,depth_img)
+    class_angle = np.argmax(predict_angle(rgb_img))
+    #0:left 1:center 2:right
+    if class_angle == 0:
+        angle = -60
+    elif class_angle ==1:
+        angle = 0
+    elif class_angle == 2:
+        angle = 60
+
     if bt1_sensor == True:
         hand_brake = True if hand_brake == False else False
     print(hand_brake)
