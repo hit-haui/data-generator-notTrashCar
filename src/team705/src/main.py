@@ -44,13 +44,33 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
-
+#left, center, right
+traffic_status_list = [0,0,0]
 def process_frame(raw_img):
+    global traffic_status_list
+
+    traffic = 0
+
+    traffic_status = predict_traffic(raw_img)
+    if traffic_status == 'Left':
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>Left')
+        traffic_status_list[0] = traffic_status_list[0] +1
+    elif traffic_status == 'Right':
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>.Right')
+        traffic_status_list[2] = traffic_status_list[2] +1
+    elif traffic_status == 'No traffic':
+        traffic_status_list[1] = traffic_status_list[1] +1
+    
+    if traffic_status_list[1] == 200:
+        traffic_status_list = [0,0,0]
+
+    if traffic_status_list[0] >= 5:
+        traffic = -1
+    elif traffic_status_list[2] >=5:
+        traffic = 1
+
     # Crop from sky line down
-    traffic_status = get_predict(raw_img)
-    print(sky_line)
     raw_img = raw_img[sky_line:, :]
-    print(raw_img.shape)
     # Hide sensor and car's hood
     # raw_img = cv2.rectangle(raw_img, top_left_proximity,
     #                         bottom_right_proximity, hood_fill_color, -1)
@@ -59,8 +79,18 @@ def process_frame(raw_img):
     cv2.imshow('raw', raw_img)
 
     # Handle shadow by using complex sobel operator
+    
     combined = get_combined_binary_thresholded_img(
         cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
+    print(traffic)
+    if traffic == -1:
+        combined = combined[:combined.shape[0], :combined.shape[1]//2]
+        combined[:combined.shape[0], combined.shape[1]-20:combined.shape[1]-5] = 255
+    elif traffic == 1:
+        combined = combined[:combined.shape[0], combined.shape[1]//2:combined.shape[1]]
+        combined[:combined.shape[0], 5:20] = 255
+
+    cv2.imshow('combined',combined)
     # combined = cv2.adaptiveThreshold(combined, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
     #                             cv2.THRESH_BINARY, 51, 2)
     # combined = cv2.bitwise_not(combined)
