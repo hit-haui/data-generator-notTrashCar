@@ -11,6 +11,7 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 from lane_detect import *
 from param import *
+from predict_traffic_sign import *
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
 # config.gpu_options.per_process_gpu_memory_fraction = 0.3
@@ -46,6 +47,7 @@ def car_control(angle, speed):
 
 def process_frame(raw_img):
     # Crop from sky line down
+    traffic_status = get_predict(raw_img)
     print(sky_line)
     raw_img = raw_img[sky_line:, :]
     print(raw_img.shape)
