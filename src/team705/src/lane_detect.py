@@ -120,7 +120,7 @@ def get_combined_binary_thresholded_img(undist_img):
     return combined_binary
 
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, traffic):
+def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     """
     `img` should be the output of a Canny transform.
     Returns an image with hough lines drawn.
