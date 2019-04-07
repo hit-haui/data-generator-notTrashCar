@@ -46,9 +46,7 @@ def car_control(angle, speed):
 
 def process_frame(raw_img):
     # Crop from sky line down
-    print(sky_line)
     raw_img = raw_img[sky_line:, :]
-    print(raw_img.shape)
     # Hide sensor and car's hood
     # raw_img = cv2.rectangle(raw_img, top_left_proximity,
     #                         bottom_right_proximity, hood_fill_color, -1)
@@ -65,8 +63,12 @@ def process_frame(raw_img):
 
     # Simple color filltering + Canny Edge detection
     # combined = easy_lane_preprocess(raw_img)
+
+    # Line detection here
     line_image, angle = hough_lines(combined, rho, theta,
                                     threshold, min_line_length, max_line_gap)
+
+    # Hanlde turn ?
     test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
     annotated_image = cv2.cvtColor(weighted_img(
         line_image, test_img), cv2.COLOR_RGB2BGR)

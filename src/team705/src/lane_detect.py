@@ -259,6 +259,13 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=10):
         cv2.line(img, (right_x1, y1), (right_x2, y2), color, thickness)
     if draw_left:
         cv2.line(img, (left_x1, y1), (left_x2, y2), color, thickness)
+
+    angle = calculate_angle(img, draw_left, draw_right,
+                            left_x1, left_x2, right_x1, right_x2, x1, y1)
+    return angle
+
+
+def calculate_angle(img, draw_left, draw_right, left_x1, left_x2, right_x1, right_x2, x1, y1):
     if draw_left and draw_right:
         x_des = int((left_x1 + right_x1)/2)
         y_des = int(y1-destination_line_height)
