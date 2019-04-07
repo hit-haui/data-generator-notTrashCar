@@ -46,6 +46,7 @@ def car_control(angle, speed):
 
 
 def process_frame(raw_img):
+    get_predict(raw_img)
     # Crop from sky line down
     raw_img = raw_img[sky_line:, :]
     # Hide sensor and car's hood

@@ -10,7 +10,9 @@ set_session(tf.Session(config=config))
 
 graph = tf.get_default_graph()
 
-model_traffic = load_model('/home/nvidia/detect2_traffic-016-0.98212.hdf5')
+model_traffic = load_model(
+    '/home/linus/model_notTrashCar/model_traffic_sign/traffic_sign_006_0.98191.hdf5')
+print('Loaded model')
 
 def get_predict(img):
     s = img.shape
@@ -76,8 +78,10 @@ def get_predict(img):
                 elif max(l, max(n, r)) == traffic_list[2]:
                     right +=1
     if left > right:
+        print('Left: <-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-< :Left') 
         return 'Left'
     elif left < right:
+        print('Right: ->->->->->->->->->->->->->->->->->->->->->->->-> :Right')
         return 'Right'
-    else :
+    else:
         return 'No traffic'
