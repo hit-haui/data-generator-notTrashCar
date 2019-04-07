@@ -10,13 +10,9 @@ set_session(tf.Session(config=config))
 
 graph = tf.get_default_graph()
 
-<<<<<<< HEAD:src/team705/src/include/predict_traffic_sign.py
-model_traffic = load_model('/home/vicker/Downloads/data_cuocduaso/detect2_traffic-016-0.98212.hdf5')
-=======
 model_traffic = load_model(
-    '/home/linus/model_notTrashCar/model_traffic_sign/traffic_sign_006_0.98191.hdf5')
+    '/home/vicker/Downloads/traffic_sign_019_0.98794.hdf5')
 print('Loaded model')
->>>>>>> 78cbe2f4a5ecb0101c04e9212d6799a7c535616a:src/team705/src/predict_traffic_sign.py
 
 def predict_traffic(img):
     s = img.shape

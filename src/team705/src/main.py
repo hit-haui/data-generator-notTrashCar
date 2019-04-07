@@ -53,10 +53,8 @@ def process_frame(raw_img):
 
     traffic_status = predict_traffic(raw_img)
     if traffic_status == 'Left':
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>Left')
         traffic_status_list[0] = traffic_status_list[0] +1
     elif traffic_status == 'Right':
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>.Right')
         traffic_status_list[2] = traffic_status_list[2] +1
     elif traffic_status == 'No traffic':
         traffic_status_list[1] = traffic_status_list[1] +1
