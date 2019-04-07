@@ -10,8 +10,8 @@ set_session(tf.Session(config=config))
 
 graph = tf.get_default_graph()
 
-model_traffic = load_model('/home/vicker/Downloads/data_cuocduaso/detect2_traffic-016-0.98212.hdf5')
-
+model_traffic = load_model('/home/vicker/Downloads/traffic_sign_019_0.98794.hdf5')
+print('model loaded')
 def predict_traffic(img):
     s = img.shape
     img = img[:s[0]//2, :]

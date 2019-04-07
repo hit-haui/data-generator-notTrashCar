@@ -9,7 +9,7 @@ PARAM WORLD
 trap_bottom_width = 1
 trap_top_width = 1  # ditto for top edge of trapezoid
 trap_height = 1  # height of the trapezoid expressed as percentage of image height
-sky_line = 235+30
+sky_line = 20+70
 
 # Hide proximity sensor and car's hood
 hood_fill_color = (91, 104, 119)

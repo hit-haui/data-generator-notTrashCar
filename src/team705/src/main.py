@@ -97,8 +97,12 @@ def process_frame(raw_img):
 
     # Simple color filltering + Canny Edge detection
     # combined = easy_lane_preprocess(raw_img)
+
+    # Line detection here
     line_image, angle = hough_lines(combined, rho, theta,
                                     threshold, min_line_length, max_line_gap)
+
+    # Hanlde turn ?
     test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
     annotated_image = cv2.cvtColor(weighted_img(
         line_image, test_img), cv2.COLOR_RGB2BGR)
