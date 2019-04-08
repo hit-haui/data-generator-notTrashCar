@@ -20,7 +20,7 @@ sky_line = 20+70
 
 ''' LANE DETECT '''
 # Color filtering
-lower_white = 89
+lower_white = 200
 upper_white = 255
 kernel_size = 11
 canny_low_threshold = 130
@@ -38,6 +38,9 @@ max_line_gap = 50    # maximum gap in pixels between connectable line segments
 destination_line_height = 50
 # Slope for left, right angle calculation when we only can find a single lane
 destination_left_right_slope = 30
+
+# remember traffic status
+no_traffic_size_count = 30 
 
 '''
 PARAM WORLD

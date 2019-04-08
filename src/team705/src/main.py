@@ -59,12 +59,12 @@ def process_frame(raw_img):
     elif traffic_status == 'No traffic':
         traffic_status_list[1] = traffic_status_list[1] +1
     
-    if traffic_status_list[1] == 200:
+    if traffic_status_list[1] == no_traffic_size_count:
         traffic_status_list = [0,0,0]
 
-    if traffic_status_list[0] >= 5:
+    if traffic_status_list[0] >= 1:
         traffic = -1
-    elif traffic_status_list[2] >=5:
+    elif traffic_status_list[2] >=1:
         traffic = 1
 
     # Crop from sky line down
@@ -76,10 +76,14 @@ def process_frame(raw_img):
     #                         bottom_right_hood, hood_fill_color, -1)
     cv2.imshow('raw', raw_img)
 
+
+    # Simple color filltering + Canny Edge detection
+    combined = easy_lane_preprocess(raw_img)
+
     # Handle shadow by using complex sobel operator
     
-    combined = get_combined_binary_thresholded_img(
-        cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
+    # combined = get_combined_binary_thresholded_img(
+    #     cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
     print(traffic)
     if traffic == -1:
         combined = combined[:combined.shape[0], :combined.shape[1]//2]
@@ -93,8 +97,7 @@ def process_frame(raw_img):
     #                             cv2.THRESH_BINARY, 51, 2)
     # combined = cv2.bitwise_not(combined)
 
-    # Simple color filltering + Canny Edge detection
-    # combined = easy_lane_preprocess(raw_img)
+
 
     # Line detection here
     line_image, angle = hough_lines(combined, rho, theta,
@@ -114,12 +117,13 @@ def image_callback(rgb_data):
     start_time = time.time()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
+    cv2.imwrite('/home/vicker/Desktop/data/'+str(start_time)+'.jpg',rgb_img)
     # rgb_img = cv2.resize(rgb_img, (480, 640))
     # print(rgb_img.shape)
     annotated_image, angle = process_frame(rgb_img)
     cv2.imshow('processed_frame', annotated_image)
     cv2.waitKey(1)
-    # car_control(angle=angle, speed=25)
+    car_control(angle=angle, speed=100)
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
     print("FPS:", 1/(time.time()-start_time))
     print('Angle:', angle)
