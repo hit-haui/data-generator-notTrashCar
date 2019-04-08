@@ -3,7 +3,7 @@ import cv2
 from param import *
 import math
 
-
+kernel_size = 5
 def to_hls(img):
     """
     Returns the same image in HLS format
@@ -20,7 +20,7 @@ def to_lab(img):
     return cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
 
 
-def abs_sobel(gray_img, x_dir=True, kernel_size=3, thres=(0, 255)):
+def abs_sobel(gray_img, x_dir=True, kernel_size=kernel_size, thres=(0, 255)):
     """
     Applies the sobel operator to a grayscale-like (i.e. single channel) image in either horizontal or vertical direction
     The function also computes the asbolute value of the resulting matrix and applies a binary threshold
@@ -35,7 +35,7 @@ def abs_sobel(gray_img, x_dir=True, kernel_size=3, thres=(0, 255)):
     return gradient_mask
 
 
-def mag_sobel(gray_img, kernel_size=3, thres=(0, 255)):
+def mag_sobel(gray_img, kernel_size=kernel_size, thres=(0, 255)):
     """
     Computes sobel matrix in both x and y directions, merges them by computing the magnitude in both directions
     and applies a threshold value to only set pixels within the specified range
@@ -52,7 +52,7 @@ def mag_sobel(gray_img, kernel_size=3, thres=(0, 255)):
     return sxy_binary
 
 
-def dir_sobel(gray_img, kernel_size=3, thres=(0, np.pi/2)):
+def dir_sobel(gray_img, kernel_size=kernel_size, thres=(0, np.pi/2)):
     """
     Computes sobel matrix in both x and y directions, gets their absolute values to find the direction of the gradient
     and applies a threshold value to only set pixels within the specified range
@@ -87,7 +87,7 @@ def compute_hls_white_binary(rgb_img):
     return img_hls_white_bin
 
 
-def combined_sobels(sx_binary, sy_binary, sxy_magnitude_binary, gray_img, kernel_size=3, angle_thres=(0, np.pi/2)):
+def combined_sobels(sx_binary, sy_binary, sxy_magnitude_binary, gray_img, kernel_size=kernel_size, angle_thres=(0, np.pi/2)):
     sxy_direction_binary = dir_sobel(
         gray_img, kernel_size=kernel_size, thres=angle_thres)
 
@@ -333,3 +333,17 @@ def easy_lane_preprocess(img):
     combined = canny(combined, canny_low_threshold, canny_high_threshold)
     # cv2.imshow('combined', combined)
     return combined
+
+def detect_gray(img):
+    combined_white = easy_lane_preprocess(img)
+    hsv = cv2.cvtColor (img, cv2.COLOR_BGR2HSV)
+
+    mask_white = cv2.inRange(hsv, lower_gray, upper_gray)
+
+    combined = cv2.bitwise_and(img,img, mask=mask_white)
+    combined = cv2.cvtColor(combined, cv2.COLOR_BGR2GRAY)
+    combined = canny(combined, canny_low_threshold, canny_high_threshold)
+
+    res = cv2.add(combined,combined_white)
+    
+    return res,combined

@@ -26,6 +26,10 @@ kernel_size = 11
 canny_low_threshold = 130
 canny_high_threshold = 150
 
+#Color gray filtering 
+lower_gray = np.array([75,81,80])
+upper_gray = np.array([140,255,255])
+
 # Hough Transform
 rho = 2  # distance resolution in pixels of the Hough grid
 theta = np.pi/180  # angular resolution in radians of the Hough grid

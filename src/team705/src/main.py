@@ -78,7 +78,7 @@ def process_frame(raw_img):
 
 
     # Simple color filltering + Canny Edge detection
-    combined = easy_lane_preprocess(raw_img)
+    combined, combined_gray = detect_gray(raw_img)
 
     # Handle shadow by using complex sobel operator
     
@@ -123,7 +123,7 @@ def image_callback(rgb_data):
     annotated_image, angle = process_frame(rgb_img)
     cv2.imshow('processed_frame', annotated_image)
     cv2.waitKey(1)
-    car_control(angle=angle, speed=100)
+    car_control(angle=angle, speed= 90)
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
     print("FPS:", 1/(time.time()-start_time))
     print('Angle:', angle)
