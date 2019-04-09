@@ -11,7 +11,9 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 from lane_detect import *
 from param import *
-from predict_traffic_sign import *
+from PIL import Image
+
+# from predict_traffic_sign import *
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
 # config.gpu_options.per_process_gpu_memory_fraction = 0.3
@@ -45,6 +47,9 @@ def car_control(angle, speed):
     print('Angle:', angle, 'Speed:', speed)
 
 
+        
+
+
 def process_frame(raw_img):
     # Crop from sky line down
     raw_img = raw_img[sky_line:, :]
@@ -53,11 +58,13 @@ def process_frame(raw_img):
     #                         bottom_right_proximity, hood_fill_color, -1)
     # raw_img = cv2.rectangle(raw_img, top_left_hood,
     #                         bottom_right_hood, hood_fill_color, -1)
-    cv2.imshow('raw', raw_img)
+    # cv2.imshow('raw', raw_img)
 
     # Handle shadow by using complex sobel operator
     combined = get_combined_binary_thresholded_img(
         cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
+    # cv2.imshow('combined', combined)
+
     # combined = cv2.adaptiveThreshold(combined, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
     #                             cv2.THRESH_BINARY, 51, 2)
     # combined = cv2.bitwise_not(combined)
@@ -70,33 +77,53 @@ def process_frame(raw_img):
                                     threshold, min_line_length, max_line_gap)
 
     # Hanlde turn ?
-    test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
-    annotated_image = cv2.cvtColor(weighted_img(
-        line_image, test_img), cv2.COLOR_RGB2BGR)
-    return annotated_image, angle
+    # test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
+    # annotated_image = cv2.cvtColor(weighted_img(detect white color in threshold image
+    #     line_image, test_img), cv2.COLOR_RGB2BGR)
+    # return annotated_image, angle
+    return combined
 
+
+def snow_detech(combined):
+    height, width = combined.shape[:2]
+    pixel_sum_value = np.sum(combined)
+    rate = (pixel_sum_value / (height * width*255)) * 100
+    print('rate', rate)
+    if rate < 10.5:
+        snow = False
+    else:
+        snow = True
+    return snow
+    
+    
 
 def image_callback(rgb_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
+    print('call back')
     start_time = time.time()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     # rgb_img = cv2.resize(rgb_img, (480, 640))
     # print(rgb_img.shape)
-    annotated_image, angle = process_frame(rgb_img)
-    cv2.imshow('processed_frame', annotated_image)
+    # annotated_image, angle = process_frame(rgb_img)
+    combined = process_frame(rgb_img)
+    snow = snow_detech(combined)
+    print('snow', snow)
+    cv2.imshow('combined', combined)
     cv2.waitKey(1)
+    
+    
     # car_control(angle=angle, speed=25)
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
     print("FPS:", 1/(time.time()-start_time))
-    print('Angle:', angle)
+    # print('Angle:', angle)
     print('-----------------------------------')
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
-    rospy.Subscriber(
+    rospy.Subscriber(    # Printing array dimensions (axes)
         '/camera/rgb/image_raw/compressed/', CompressedImage, buff_size=2**32, queue_size=1, callback=image_callback)
     try:
         rospy.spin()
