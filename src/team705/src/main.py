@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import cv2
 import math
 import os
 import sys
@@ -8,9 +7,10 @@ import numpy as np
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Float32
-from lane_detect import *
+from std_msgs.msg import Float32, Bool, String
 from param import *
+import math
+
 # from predict_traffic_sign import *
 
 from yolo_traffic_sign import *
@@ -47,6 +47,7 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
+
 #left, center, right
 def process_frame(raw_img):
     # traffic_status = predict_traffic(raw_img)
@@ -60,6 +61,7 @@ def process_frame(raw_img):
     # raw_img = cv2.rectangle(raw_img, top_left_hood,
     #                         bottom_right_hood, hood_fill_color, -1)
     # cv2.imshow('raw', raw_img)
+
     # Object detect
     detections = detect(image=raw_img, thresh=0.05)
     confident = {}
@@ -91,11 +93,13 @@ def process_frame(raw_img):
         print('Turning RIGHT: {}%'.format(mean_confident_right))
         traffic = 1
     # Simple color filltering + Canny Edge detection
-    combined = easy_lane_preprocess(bottom_raw_img)
+    combined,combined_gray = detect_gray(bottom_raw_img)
+
 
     # Handle shadow by using complex sobel operator
     
     # combined = get_combined_binary_thresholded_img(
+
     #     cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
     # print(traffic)
     # if traffic == -1:
@@ -106,6 +110,7 @@ def process_frame(raw_img):
     #     combined[:combined.shape[0], 5:20] = 255
 
     # cv2.imshow('combined',combined)
+
     # combined = cv2.adaptiveThreshold(combined, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
     #                             cv2.THRESH_BINARY, 51, 2)
     # combined = cv2.bitwise_not(combined)
@@ -118,6 +123,7 @@ def process_frame(raw_img):
 
     # Hanlde turn ?
     test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
+
     annotated_image = cv2.cvtColor(weighted_img(
         line_image, test_img), cv2.COLOR_RGB2BGR)
     return annotated_image, angle, raw_img
@@ -143,28 +149,34 @@ def image_callback(rgb_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
+    print('call back')
     start_time = time.time()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-    cv2.imwrite('/home/vicker/Desktop/data/'+str(start_time)+'.jpg',rgb_img)
     # rgb_img = cv2.resize(rgb_img, (480, 640))
     # print(rgb_img.shape)
-    annotated_image, angle, raw_img = process_frame(rgb_img)
-    cv2.imshow('processed_frame', annotated_image)
-    cv2.waitKey(1)
-    car_control(angle=angle, speed=100)
+    
+    #annotated_image, angle = process_frame(rgb_img)
+    angle = detect_angle_lane_right(rgb_img)
+    #cv2.imshow('processed_frame', annotated_image)
+    #cv2.waitKey(1)
+    car_control(angle=angle, speed= 80)
+
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
     cv2.waitKey(1)
     print("FPS:", 1/(time.time()-start_time))
+
     print('Angle:', angle)
     print('status:', tree_detect(raw_img, rgb_img))
+
     print('-----------------------------------')
 
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
-    rospy.Subscriber(
+    rospy.Subscriber(    # Printing array dimensions (axes)
         '/camera/rgb/image_raw/compressed/', CompressedImage, buff_size=2**32, queue_size=1, callback=image_callback)
+
     try:
         rospy.spin()
     except KeyboardInterrupt:
