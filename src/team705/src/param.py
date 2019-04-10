@@ -20,7 +20,7 @@ sky_line = 20+70
 
 ''' LANE DETECT '''
 # Color filtering
-lower_white = 89
+lower_white = 200
 upper_white = 255
 kernel_size = 11
 canny_low_threshold = 130
@@ -30,7 +30,7 @@ canny_high_threshold = 150
 rho = 2  # distance resolution in pixels of the Hough grid
 theta = np.pi/180  # angular resolution in radians of the Hough grid
 threshold = 120  # minimum number of votes (intersections in Hough grid cell)
-min_line_length = 25  # minimum number of pixels making up a line
+min_line_length = 50  # minimum number of pixels making up a line
 max_line_gap = 50    # maximum gap in pixels between connectable line segments
 
 # Angle calculation
@@ -41,6 +41,9 @@ destination_left_right_slope = 30
 
 #tree
 green_counting = 50000
+
+# remember traffic status
+no_traffic_size_count = 5 
 
 '''
 PARAM WORLD
