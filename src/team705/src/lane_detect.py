@@ -347,3 +347,99 @@ def detect_gray(img):
     res = cv2.add(combined,combined_white)
     
     return res,combined
+
+def find(img):
+    check = True
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #ret, binary = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    binary = img
+    #return np.nonzero(binary)[0][-1] if len(np.nonzero(binary)[0]) > 0 else img.shape[0]
+    if len(np.nonzero(binary)[0]) > 0:
+        x = np.nonzero(binary)[1][-1]
+        y = np.nonzero(binary)[0][-1]
+        return x,y, check
+    else:
+        check =False
+        return 1,1, check
+    
+
+def detect_angle_lane_left(img):
+    img = img[sky_line:,:]
+    res,combined = detect_gray(img)
+    no_cut = res
+    print(res.shape)
+    res = res[:res.shape[0]-lane_left_pixel, :res.shape[1]-lane_left_pixel_height]
+    x,y,check = find(res)
+    print(x,y)
+    if check == True:
+        cv2.line(res , (x, y), (x, y), (255, 255, 255), 5)
+        cv2.line(img , (x, y), (x, y), (90, 0, 255), 5)
+        cv2.line(img , (img.shape[1]//2, y ), (img.shape[1]//2, y), (90, 0, 255), 5)
+
+        x_mid = img.shape[1]//2
+        y_mid = img.shape[0]
+        cv2.line(img , (x_mid, y_mid ), (x_mid, y_mid ), (90, 0, 255), 5)
+
+        x_need = x+x_need_left #(img.shape[1]//2 + x) //2
+        y_need = y
+
+        cv2.line(img , (x_need, y_need ), (x_need, y_need ), (90, 90, 255), 5)
+
+        cv2.line(img , (x_need, y_need ), (x_mid, y_mid ), (90, 90, 255), 5)
+
+        angle = math.degrees(math.atan((x_mid - x_need)/(y_mid-y_need)))
+    else :
+        angle = 0
+    print(angle)
+    cv2.imshow('no_cut', no_cut)
+    cv2.imshow('res',res)
+    cv2.imshow('img',img)
+    cv2.waitKey(1)
+    return angle
+
+def detect_angle_lane_right(img):
+    img = img[sky_line:,:]
+    res,combined = detect_gray(img)
+    no_cut = res
+    print(res.shape)
+    res = res[:res.shape[0]-lane_right_pixel, lane_right_pixel_height:res.shape[1]]
+    x,y,check = find(res)
+    print(x,y)
+    if check == True:
+        cv2.line(res , (x, y), (x, y), (255, 255, 255), 5)
+        cv2.line(img , (img.shape[1]-x, y), (img.shape[1]-x, y), (90, 0, 255), 5)
+        cv2.line(img , (img.shape[1]//2, y ), (img.shape[1]//2, y), (90, 0, 255), 5)
+
+        x_mid = img.shape[1]//2
+        y_mid = img.shape[0]
+        cv2.line(img , (x_mid, y_mid ), (x_mid, y_mid ), (90, 0, 255), 5)
+
+        x_need = img.shape[1]-x-x_need_right #(img.shape[1]//2 + x) //2
+        y_need = y
+
+        cv2.line(img , (x_need, y_need ), (x_need, y_need ), (90, 90, 255), 5)
+
+        cv2.line(img , (x_need, y_need ), (x_mid, y_mid ), (90, 90, 255), 5)
+
+        angle = math.degrees(math.atan((x_mid - x_need)/(y_mid-y_need)))
+    else :
+        angle = 0
+    print(angle)
+    cv2.imshow('no_cut', no_cut)
+    cv2.imshow('res',res)
+    cv2.imshow('img',img)
+    cv2.waitKey(1)
+    return angle
+
+def snow_detech(raw_image):
+    combined = get_combined_binary_thresholded_img(
+        cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
+    height, width = combined.shape[:2]
+    pixel_sum_value = np.sum(combined)
+    rate = (pixel_sum_value / (height * width*255)) * 100
+    print('rate', rate)
+    if rate < 10.5:
+        snow = False
+    else:
+        snow = True
+    return snow
