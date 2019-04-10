@@ -33,8 +33,10 @@ upper_gray = np.array([140,255,255])
 # Hough Transform
 rho = 2  # distance resolution in pixels of the Hough grid
 theta = np.pi/180  # angular resolution in radians of the Hough grid
+
 threshold = 130  # minimum number of votes (intersections in Hough grid cell)
 min_line_length = 10  # minimum number of pixels making up a line
+
 max_line_gap = 50    # maximum gap in pixels between connectable line segments
 
 # Angle calculation
@@ -43,7 +45,12 @@ destination_line_height = 50
 # Slope for left, right angle calculation when we only can find a single lane
 destination_left_right_slope = 30
 
+#tree
+green_counting = 50000
+
 # remember traffic status
+
+
 no_traffic_size_count = 20
 
 
@@ -59,6 +66,7 @@ lane_right_pixel = 50
 ##chie doc anh
 lane_right_pixel_height = 100
 x_need_right = 40
+
 
 '''
 PARAM WORLD

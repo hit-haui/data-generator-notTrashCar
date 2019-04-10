@@ -9,17 +9,32 @@ import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32, Bool, String
 from param import *
-from lane_detect import *
-from predict_traffic_sign import *
-import tensorflow as tf
-from keras.models import load_model
-import numpy as np
-from keras.backend.tensorflow_backend import set_session
 import math
 
-#left, center, right
-traffic_status_list = [0,0,0]
-flow_lane = 0
+# from predict_traffic_sign import *
+
+from yolo_traffic_sign import *
+
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.3
+# set_session(tf.Session(config=config))
+
+# model_path = '/home/dejavu/read_data_2chanel-054-524.97807.hdf5'
+# img_size = (320, 240, 1)
+# model = load_model(model_path)
+# graph = tf.get_default_graph()
+
+# print('Loaded model')
+
+#    os.chdir(os.path.dirname(__file__))
+#    os.system('clear')
+#   print("\nWait for initial setup, please don't connect anything yet...\n")
+try:
+    sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
+# try:
+except:
+   pass
 
 
 def car_control(angle, speed):
@@ -32,31 +47,14 @@ def car_control(angle, speed):
     pub_angle.publish(angle)
     print('Angle:', angle, 'Speed:', speed)
 
+
+#left, center, right
 def process_frame(raw_img):
-    global traffic_status_list,flow_lane
-
-    traffic = 0
-
-    traffic_status = predict_traffic(raw_img)
-    if traffic_status == 'Left':
-        traffic_status_list[0] = traffic_status_list[0] +1
-    elif traffic_status == 'Right':
-        traffic_status_list[2] = traffic_status_list[2] +1
-    elif traffic_status == 'No traffic':
-        traffic_status_list[1] = traffic_status_list[1] +1
-    
-    if traffic_status_list[1] == no_traffic_size_count:
-        traffic_status_list = [0,0,0]
-
-    if traffic_status_list[0] >= 1:
-        flow_lane = -1
-        traffic = -1
-    elif traffic_status_list[2] >=1:
-        traffic = 1
-        flow_lane = 1
+    # traffic_status = predict_traffic(raw_img)
 
     # Crop from sky line down
-    raw_img = raw_img[sky_line:, :]
+    bottom_raw_img = raw_img[sky_line:, :]
+    # above_raw_img = raw_img[:sky_line, :]
     # Hide sensor and car's hood
     # raw_img = cv2.rectangle(raw_img, top_left_proximity,
     #                         bottom_right_proximity, hood_fill_color, -1)
@@ -64,27 +62,55 @@ def process_frame(raw_img):
     #                         bottom_right_hood, hood_fill_color, -1)
     # cv2.imshow('raw', raw_img)
 
+    # Object detect
+    detections = detect(image=raw_img, thresh=0.05)
+    confident = {}
+    if detections:
+        for each_detection in detections:
+            # print('{}: {}%'.format(each_detection[0], each_detection[1]*100))
+            if each_detection[0] in confident:
+                confident[each_detection[0]].append(each_detection[1]*100)
+            else:
+                confident[each_detection[0]] = [each_detection[1]*100]
 
+            x_center = each_detection[-1][0]
+            y_center = each_detection[-1][1]
+            width = each_detection[-1][2]
+            height = each_detection[-1][3]
+            x_top = int(x_center - width/2)
+            y_top = int(y_center - height/2)
+            x_bot = int(x_top + width)
+            y_bot = int(y_top + height)
+            cv2.rectangle(raw_img, (x_top, y_top), (x_bot, y_bot), (0, 255, 0), 2)
+    cv2.imshow('traffic_sign_detection', raw_img)
+    traffic = 0
+    mean_confident_left = np.mean(confident['turn_left']) if 'turn_left' in confident.keys() else 0
+    mean_confident_right = np.mean(confident['turn_right']) if 'turn_right' in confident.keys() else 0
+    if mean_confident_left > mean_confident_right and mean_confident_left != 0:
+        print('Turning LEFT: {}%'.format(mean_confident_left))
+        traffic = -1
+    elif mean_confident_right !=0:
+        print('Turning RIGHT: {}%'.format(mean_confident_right))
+        traffic = 1
     # Simple color filltering + Canny Edge detection
-    combined, combined_gray = detect_gray(raw_img)
+    combined,combined_gray = detect_gray(bottom_raw_img)
+
 
     # Handle shadow by using complex sobel operator
     
     # combined = get_combined_binary_thresholded_img(
-    #     cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 25
 
+    #     cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
+    # print(traffic)
+    # if traffic == -1:
+    #     combined = combined[:combined.shape[0], :combined.shape[1]//2]
+    #     combined[:combined.shape[0], combined.shape[1]-20:combined.shape[1]-5] = 255
+    # elif traffic == 1:
+    #     combined = combined[:combined.shape[0], combined.shape[1]//2:combined.shape[1]]
+    #     combined[:combined.shape[0], 5:20] = 255
 
-    print(traffic)
-    if traffic == -1:
-        flow_lane = -1
-        combined = combined[:combined.shape[0], :combined.shape[1]//2]
-        combined[:combined.shape[0], combined.shape[1]-20:combined.shape[1]-5] = 255
-    elif traffic == 1:
-        flow_lane = 1
-        combined = combined[:combined.shape[0], combined.shape[1]//2:combined.shape[1]]
-        combined[:combined.shape[0], 5:20] = 255
+    # cv2.imshow('combined',combined)
 
-    cv2.imshow('combined',combined)
     # combined = cv2.adaptiveThreshold(combined, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
     #                             cv2.THRESH_BINARY, 51, 2)
     # combined = cv2.bitwise_not(combined)
@@ -97,9 +123,27 @@ def process_frame(raw_img):
 
     # Hanlde turn ?
     test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
-    annotated_image = cv2.cvtColor(weighted_img(weighted_img(line_image, test_img), cv2.COLOR_RGB2BGR))
-    return annotated_image, angle
-    
+
+    annotated_image = cv2.cvtColor(weighted_img(
+        line_image, test_img), cv2.COLOR_RGB2BGR)
+    return annotated_image, angle, raw_img
+
+
+def tree_detect(raw, rgb):
+    height, weight = raw.shape[:2]
+    weightmiddle = weight // 2
+    green_img_left = rgb[:height, :weightmiddle//2][2].sum()
+    green_img_right = rgb[:height, weightmiddle+weightmiddle//2:weight][2].sum()
+
+
+    sum_white_pixels = np.sum(raw == 255)
+    sum_green_pixels = green_img_left + green_img_right
+    if sum_white_pixels <= 1 and green_img_left + green_img_right <= green_counting:
+        status = True
+    else:
+        status = False
+    return status
+
 
 def image_callback(rgb_data):
     '''
@@ -111,13 +155,20 @@ def image_callback(rgb_data):
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     # rgb_img = cv2.resize(rgb_img, (480, 640))
     # print(rgb_img.shape)
+    
     #annotated_image, angle = process_frame(rgb_img)
     angle = detect_angle_lane_right(rgb_img)
     #cv2.imshow('processed_frame', annotated_image)
     #cv2.waitKey(1)
     car_control(angle=angle, speed= 80)
+
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
+    cv2.waitKey(1)
     print("FPS:", 1/(time.time()-start_time))
+
+    print('Angle:', angle)
+    print('status:', tree_detect(raw_img, rgb_img))
+
     print('-----------------------------------')
 
 
