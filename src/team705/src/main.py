@@ -7,7 +7,7 @@ import numpy as np
 import rospkg
 import rospy
 from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool, String
 from param import *
 import tensorflow as tf
 from keras.models import load_model
@@ -21,7 +21,7 @@ set_session(tf.Session(config=config))
 graph = tf.get_default_graph()
 
 model_traffic = load_model(
-    '/home/vicker/Downloads/traffic_sign_019_0.98794.hdf5')
+    '/home/dejavu/Downloads/traffic_sign_019_0.98794.hdf5')
 print('Loaded model')
 
 try:
@@ -480,6 +480,9 @@ def car_control(angle, speed):
     print('Angle:', angle, 'Speed:', speed)
 
 
+        
+
+
 def process_frame(raw_img):
     global traffic_status_list,flow_lane
 
@@ -510,7 +513,7 @@ def process_frame(raw_img):
     #                         bottom_right_proximity, hood_fill_color, -1)
     # raw_img = cv2.rectangle(raw_img, top_left_hood,
     #                         bottom_right_hood, hood_fill_color, -1)
-    cv2.imshow('raw', raw_img)
+    # cv2.imshow('raw', raw_img)
 
 
     # Simple color filltering + Canny Edge detection
@@ -545,9 +548,10 @@ def process_frame(raw_img):
 
     # Hanlde turn ?
     test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
-    annotated_image = cv2.cvtColor(weighted_img(
+    annotated_image = cv2.cvtColor(weighted_img(detect white color in threshold image
         line_image, test_img), cv2.COLOR_RGB2BGR)
     return annotated_image, angle
+    
 
 def find(img):
     check = True
@@ -632,10 +636,38 @@ def detect_angle_lane_right(img):
     cv2.waitKey(1)
     return angle
 
+def snow_detech(raw_image):
+    combined = get_combined_binary_thresholded_img(
+        cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
+    height, width = combined.shape[:2]
+    pixel_sum_value = np.sum(combined)
+    rate = (pixel_sum_value / (height * width*255)) * 100
+    print('rate', rate)
+    if rate < 10.5:
+        snow = False
+    else:
+        snow = True
+    return snow
+
+def lcd_print(s):
+    lcd = rospy.Publisher('/lcd_print', String, queue_size=10)
+    lcd.publish(s)
+
+proximity_sensor = True
+bt1_sensor = bt2_sensor = bt3_sensor = bt4_sensor = False
+hand_brake = True
+default_speed = 8
+max_speed = 15
+max_speed_mode = False
+    
+    
+
 def image_callback(rgb_data):
     '''
     Hàm này được gọi mỗi khi simulator trả về ảnh, vậy nên có thể gọi điều khiển xe ở đây
     '''
+    global hand_brake, max_speed_mode
+    print('call back')
     start_time = time.time()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
@@ -648,17 +680,42 @@ def image_callback(rgb_data):
     car_control(angle=angle, speed= 80)
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
     print("FPS:", 1/(time.time()-start_time))
-    print('Angle:', angle)
     print('-----------------------------------')
+
+
+def proximity_callback(proximity_data):
+    global proximity_sensor
+    proximity_sensor = proximity_data.data
+
+def bt1_callback(bt1_data):
+    global bt1_sensor
+    bt1_sensor = bt1_data.data
+
+def bt2_callback(bt2_data):
+    global bt2_sensor
+    bt2_sensor = bt2_data.data
+
+def bt3_callback(bt3_data):
+    global bt3_sensor
+    bt3_sensor = bt3_data.data
+
+def bt4_callback(bt4_data):
+    global bt4_sensor
+    bt4_sensor = bt4_data.data
+
 
 def main():
     rospy.init_node('team705_node', anonymous=True)
-    rospy.Subscriber(
+    rospy.Subscriber(    # Printing array dimensions (axes)
         '/camera/rgb/image_raw/compressed/', CompressedImage, buff_size=2**32, queue_size=1, callback=image_callback)
+    proximity_sub = rospy.Subscriber('/ss_status', Bool, proximity_callback)
+    bt1_sub = rospy.Subscriber('/bt1_status', Bool, bt1_callback)
+    bt2_sub = rospy.Subscriber('/bt2_status', Bool, bt2_callback)
+    bt3_sub = rospy.Subscriber('/bt3_status', Bool, bt3_callback)
+    bt4_sub = rospy.Subscriber('/bt4_status', Bool, bt4_callback)
     try:
         rospy.spin()
     except KeyboardInterrupt:
-        car_control(angle = 0, speed = 0 )
         pass
 
 
