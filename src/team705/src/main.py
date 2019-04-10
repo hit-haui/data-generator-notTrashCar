@@ -48,12 +48,7 @@ def car_control(angle, speed):
     print('Angle:', angle, 'Speed:', speed)
 
 #left, center, right
-traffic_status_list = [0,0,0]
 def process_frame(raw_img):
-    global traffic_status_list
-
-    traffic = 0
-
     # traffic_status = predict_traffic(raw_img)
 
     # Crop from sky line down
@@ -67,14 +62,14 @@ def process_frame(raw_img):
     # cv2.imshow('raw', raw_img)
     # Object detect
     detections = detect(image=raw_img, thresh=0.05)
+    confident = {}
     if detections:
         for each_detection in detections:
-            print('{}: {}%'.format(each_detection[0], each_detection[1]*100))
-
-            if each_detection[0] == 'turn_left':
-                traffic_status_list[0] += 1
+            # print('{}: {}%'.format(each_detection[0], each_detection[1]*100))
+            if each_detection[0] in confident:
+                confident[each_detection[0]].append(each_detection[1]*100)
             else:
-                traffic_status_list[2] += 1
+                confident[each_detection[0]] = [each_detection[1]*100]
 
             x_center = each_detection[-1][0]
             y_center = each_detection[-1][1]
@@ -86,12 +81,15 @@ def process_frame(raw_img):
             y_bot = int(y_top + height)
             cv2.rectangle(raw_img, (x_top, y_top), (x_bot, y_bot), (0, 255, 0), 2)
     cv2.imshow('traffic_sign_detection', raw_img)
-
-    if traffic_status_list[0] >= 1:
+    traffic = 0
+    mean_confident_left = np.mean(confident['turn_left']) if 'turn_left' in confident.keys() else 0
+    mean_confident_right = np.mean(confident['turn_right']) if 'turn_right' in confident.keys() else 0
+    if mean_confident_left > mean_confident_right and mean_confident_left != 0:
+        print('Turning LEFT: {}%'.format(mean_confident_left))
         traffic = -1
-    elif traffic_status_list[2] >=1:
+    elif mean_confident_right !=0:
+        print('Turning RIGHT: {}%'.format(mean_confident_right))
         traffic = 1
-
     # Simple color filltering + Canny Edge detection
     combined = easy_lane_preprocess(bottom_raw_img)
 
