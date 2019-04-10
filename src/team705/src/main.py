@@ -9,27 +9,14 @@ import rospy
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32, Bool, String
 from param import *
+from lane_detect import *
 import math
-
+import cv2
 # from predict_traffic_sign import *
 
 from yolo_traffic_sign import *
 
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.3
-# set_session(tf.Session(config=config))
 
-# model_path = '/home/dejavu/read_data_2chanel-054-524.97807.hdf5'
-# img_size = (320, 240, 1)
-# model = load_model(model_path)
-# graph = tf.get_default_graph()
-
-# print('Loaded model')
-
-#    os.chdir(os.path.dirname(__file__))
-#    os.system('clear')
-#   print("\nWait for initial setup, please don't connect anything yet...\n")
 try:
     sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
 # try:
@@ -129,20 +116,7 @@ def process_frame(raw_img):
     return annotated_image, angle, raw_img
 
 
-def tree_detect(raw, rgb):
-    height, weight = raw.shape[:2]
-    weightmiddle = weight // 2
-    green_img_left = rgb[:height, :weightmiddle//2][2].sum()
-    green_img_right = rgb[:height, weightmiddle+weightmiddle//2:weight][2].sum()
 
-
-    sum_white_pixels = np.sum(raw == 255)
-    sum_green_pixels = green_img_left + green_img_right
-    if sum_white_pixels <= 1 and green_img_left + green_img_right <= green_counting:
-        status = True
-    else:
-        status = False
-    return status
 
 
 def image_callback(rgb_data):
@@ -157,7 +131,12 @@ def image_callback(rgb_data):
     # print(rgb_img.shape)
     
     #annotated_image, angle = process_frame(rgb_img)
-    angle = detect_angle_lane_right(rgb_img)
+    status = traffic_detect(rgb_img)
+    angle = 0
+    if status == 1:
+        angle = detect_angle_lane_right(rgb_img)
+    elif status == -1:
+        angle = -detect_angle_lane_right(rgb_img)
     #cv2.imshow('processed_frame', annotated_image)
     #cv2.waitKey(1)
     car_control(angle=angle, speed= 80)
@@ -167,7 +146,7 @@ def image_callback(rgb_data):
     print("FPS:", 1/(time.time()-start_time))
 
     print('Angle:', angle)
-    print('status:', tree_detect(raw_img, rgb_img))
+    #print('status:', tree_detect(raw_img, rgb_img))
 
     print('-----------------------------------')
 

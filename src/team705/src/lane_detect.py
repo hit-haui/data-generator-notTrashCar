@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 from param import *
 import math
+from yolo_traffic_sign import *
+
 
 kernel_size = 5
 def to_hls(img):
@@ -431,6 +433,39 @@ def detect_angle_lane_right(img):
     cv2.waitKey(1)
     return angle
 
+def traffic_detect(raw_img):
+   # Object detect
+    detections = detect(image=raw_img, thresh=0.05)
+    confident = {}
+    if detections:
+        for each_detection in detections:
+            # print('{}: {}%'.format(each_detection[0], each_detection[1]*100))
+            if each_detection[0] in confident:
+                confident[each_detection[0]].append(each_detection[1]*100)
+            else:
+                confident[each_detection[0]] = [each_detection[1]*100]
+
+            x_center = each_detection[-1][0]
+            y_center = each_detection[-1][1]
+            width = each_detection[-1][2]
+            height = each_detection[-1][3]
+            x_top = int(x_center - width/2)
+            y_top = int(y_center - height/2)
+            x_bot = int(x_top + width)
+            y_bot = int(y_top + height)
+            cv2.rectangle(raw_img, (x_top, y_top), (x_bot, y_bot), (0, 255, 0), 2)
+    cv2.imshow('traffic_sign_detection', raw_img)
+    traffic = 0
+    mean_confident_left = np.mean(confident['turn_left']) if 'turn_left' in confident.keys() else 0
+    mean_confident_right = np.mean(confident['turn_right']) if 'turn_right' in confident.keys() else 0
+    if mean_confident_left > mean_confident_right and mean_confident_left != 0:
+        print('Turning LEFT: {}%'.format(mean_confident_left))
+        traffic = -1
+    elif mean_confident_right !=0:
+        print('Turning RIGHT: {}%'.format(mean_confident_right))
+        traffic = 1
+    return traffic
+
 def snow_detech(raw_image):
     combined = get_combined_binary_thresholded_img(
         cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)) * 255
@@ -443,3 +478,18 @@ def snow_detech(raw_image):
     else:
         snow = True
     return snow
+
+def tree_detect(raw, rgb):
+    height, weight = raw.shape[:2]
+    weightmiddle = weight // 2
+    green_img_left = rgb[:height, :weightmiddle//2][2].sum()
+    green_img_right = rgb[:height, weightmiddle+weightmiddle//2:weight][2].sum()
+
+
+    sum_white_pixels = np.sum(raw == 255)
+    sum_green_pixels = green_img_left + green_img_right
+    if sum_white_pixels <= 1 and green_img_left + green_img_right <= green_counting:
+        status = True
+    else:
+        status = False
+    return status
