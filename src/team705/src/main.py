@@ -374,10 +374,10 @@ def calculate_angle(img, draw_left, draw_right, left_x1, left_x2, right_x1, righ
         y_des = int(y1-destination_line_height)
     elif draw_left and not draw_right:
         x_des = img.shape[1]//2 + destination_left_right_slope
-        y_des = img.shape[0] - destination_line_height
+        y_des = img.shape[0]//2 - destination_line_height
     elif draw_right and not draw_left:
         x_des = img.shape[1]//2 - destination_left_right_slope
-        y_des = img.shape[0] - destination_line_height
+        y_des = img.shape[0]//2- destination_line_height
     else:
         x_des = img.shape[1]//2
         y_des = img.shape[0] - destination_line_height
@@ -496,10 +496,10 @@ def process_frame(raw_img):
     if traffic_status_list[1] == no_traffic_size_count:
         traffic_status_list = [0,0,0]
 
-    if traffic_status_list[0] >= 2:
+    if traffic_status_list[0] >= 1:
         flow_lane = -1
         traffic = -1
-    elif traffic_status_list[2] >=2:
+    elif traffic_status_list[2] >=1:
         traffic = 1
         flow_lane = 1
 
@@ -549,6 +549,88 @@ def process_frame(raw_img):
         line_image, test_img), cv2.COLOR_RGB2BGR)
     return annotated_image, angle
 
+def find(img):
+    check = True
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #ret, binary = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    binary = img
+    #return np.nonzero(binary)[0][-1] if len(np.nonzero(binary)[0]) > 0 else img.shape[0]
+    if len(np.nonzero(binary)[0]) > 0:
+        x = np.nonzero(binary)[1][-1]
+        y = np.nonzero(binary)[0][-1]
+        return x,y, check
+    else:
+        check =False
+        return 1,1, check
+    
+
+def detect_angle_lane_left(img):
+    img = img[sky_line:,:]
+    res,combined = detect_gray(img)
+    no_cut = res
+    print(res.shape)
+    res = res[:res.shape[0]-lane_left_pixel, :res.shape[1]-lane_left_pixel_height]
+    x,y,check = find(res)
+    print(x,y)
+    if check == True:
+        cv2.line(res , (x, y), (x, y), (255, 255, 255), 5)
+        cv2.line(img , (x, y), (x, y), (90, 0, 255), 5)
+        cv2.line(img , (img.shape[1]//2, y ), (img.shape[1]//2, y), (90, 0, 255), 5)
+
+        x_mid = img.shape[1]//2
+        y_mid = img.shape[0]
+        cv2.line(img , (x_mid, y_mid ), (x_mid, y_mid ), (90, 0, 255), 5)
+
+        x_need = x+x_need_left #(img.shape[1]//2 + x) //2
+        y_need = y
+
+        cv2.line(img , (x_need, y_need ), (x_need, y_need ), (90, 90, 255), 5)
+
+        cv2.line(img , (x_need, y_need ), (x_mid, y_mid ), (90, 90, 255), 5)
+
+        angle = math.degrees(math.atan((x_mid - x_need)/(y_mid-y_need)))
+    else :
+        angle = 0
+    print(angle)
+    cv2.imshow('no_cut', no_cut)
+    cv2.imshow('res',res)
+    cv2.imshow('img',img)
+    cv2.waitKey(1)
+    return angle
+
+def detect_angle_lane_right(img):
+    img = img[sky_line:,:]
+    res,combined = detect_gray(img)
+    no_cut = res
+    print(res.shape)
+    res = res[:res.shape[0]-lane_right_pixel, lane_right_pixel_height:res.shape[1]]
+    x,y,check = find(res)
+    print(x,y)
+    if check == True:
+        cv2.line(res , (x, y), (x, y), (255, 255, 255), 5)
+        cv2.line(img , (img.shape[1]-x, y), (img.shape[1]-x, y), (90, 0, 255), 5)
+        cv2.line(img , (img.shape[1]//2, y ), (img.shape[1]//2, y), (90, 0, 255), 5)
+
+        x_mid = img.shape[1]//2
+        y_mid = img.shape[0]
+        cv2.line(img , (x_mid, y_mid ), (x_mid, y_mid ), (90, 0, 255), 5)
+
+        x_need = img.shape[1]-x-x_need_right #(img.shape[1]//2 + x) //2
+        y_need = y
+
+        cv2.line(img , (x_need, y_need ), (x_need, y_need ), (90, 90, 255), 5)
+
+        cv2.line(img , (x_need, y_need ), (x_mid, y_mid ), (90, 90, 255), 5)
+
+        angle = math.degrees(math.atan((x_mid - x_need)/(y_mid-y_need)))
+    else :
+        angle = 0
+    print(angle)
+    cv2.imshow('no_cut', no_cut)
+    cv2.imshow('res',res)
+    cv2.imshow('img',img)
+    cv2.waitKey(1)
+    return angle
 
 def image_callback(rgb_data):
     '''
@@ -557,13 +639,13 @@ def image_callback(rgb_data):
     start_time = time.time()
     temp = np.fromstring(rgb_data.data, np.uint8)
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
-   # cv2.imwrite('/home/vicker/Desktop/data/'+str(start_time)+'.jpg',rgb_img)
     # rgb_img = cv2.resize(rgb_img, (480, 640))
     # print(rgb_img.shape)
-    annotated_image, angle = process_frame(rgb_img)
-    cv2.imshow('processed_frame', annotated_image)
-    cv2.waitKey(1)
-    car_control(angle=angle, speed= 100)
+    #annotated_image, angle = process_frame(rgb_img)
+    angle = detect_angle_lane_right(rgb_img)
+    #cv2.imshow('processed_frame', annotated_image)
+    #cv2.waitKey(1)
+    car_control(angle=angle, speed= 80)
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
     print("FPS:", 1/(time.time()-start_time))
     print('Angle:', angle)

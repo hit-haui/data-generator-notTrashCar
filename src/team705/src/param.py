@@ -33,8 +33,8 @@ upper_gray = np.array([140,255,255])
 # Hough Transform
 rho = 2  # distance resolution in pixels of the Hough grid
 theta = np.pi/180  # angular resolution in radians of the Hough grid
-threshold = 120  # minimum number of votes (intersections in Hough grid cell)
-min_line_length = 25  # minimum number of pixels making up a line
+threshold = 130  # minimum number of votes (intersections in Hough grid cell)
+min_line_length = 10  # minimum number of pixels making up a line
 max_line_gap = 50    # maximum gap in pixels between connectable line segments
 
 # Angle calculation
@@ -44,7 +44,21 @@ destination_line_height = 50
 destination_left_right_slope = 30
 
 # remember traffic status
-no_traffic_size_count = 30 
+no_traffic_size_count = 20
+
+
+#Left:
+##chieu ngang anh:
+lane_left_pixel = 30
+##chieu doc anh:
+lane_left_pixel_height = 50
+x_need_left = 100
+#Right
+##chieu ngang anh:
+lane_right_pixel = 50
+##chie doc anh
+lane_right_pixel_height = 100
+x_need_right = 40
 
 '''
 PARAM WORLD
