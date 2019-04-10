@@ -11,7 +11,7 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 from lane_detect import *
 from param import *
-from predict_traffic_sign import *
+# from predict_traffic_sign import *
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
 # config.gpu_options.per_process_gpu_memory_fraction = 0.3
@@ -24,12 +24,12 @@ from predict_traffic_sign import *
 
 # print('Loaded model')
 
-# try:
 #    os.chdir(os.path.dirname(__file__))
 #    os.system('clear')
 #   print("\nWait for initial setup, please don't connect anything yet...\n")
 try:
     sys.path.remove('/opt/ros/lunar/lib/python2.7/dist-packages')
+# try:
 except:
    pass
 
@@ -73,7 +73,23 @@ def process_frame(raw_img):
     test_img = cv2.cvtColor(combined, cv2.COLOR_GRAY2RGB)
     annotated_image = cv2.cvtColor(weighted_img(
         line_image, test_img), cv2.COLOR_RGB2BGR)
-    return annotated_image, angle
+    return annotated_image, angle, raw_img
+
+
+def tree_detect(raw, rgb):
+    height, weight = raw.shape[:2]
+    weightmiddle = weight // 2
+    green_img_left = rgb[:height, :weightmiddle//2][2].sum()
+    green_img_right = rgb[:height, weightmiddle+weightmiddle//2:weight][2].sum()
+
+
+    sum_white_pixels = np.sum(raw == 255)
+    sum_green_pixels = green_img_left + green_img_right
+    if sum_white_pixels <= 1 and green_img_left + green_img_right <= green_counting:
+        status = True
+    else:
+        status = False
+    return status
 
 
 def image_callback(rgb_data):
@@ -85,14 +101,16 @@ def image_callback(rgb_data):
     rgb_img = cv2.imdecode(temp, cv2.IMREAD_COLOR)
     # rgb_img = cv2.resize(rgb_img, (480, 640))
     # print(rgb_img.shape)
-    annotated_image, angle = process_frame(rgb_img)
+    annotated_image, angle, raw_img = process_frame(rgb_img)
     cv2.imshow('processed_frame', annotated_image)
-    cv2.waitKey(1)
     # car_control(angle=angle, speed=25)
     # rgb_img = cv2.resize(rgb_img, img_size[:-1])
+    cv2.waitKey(1)
     print("FPS:", 1/(time.time()-start_time))
     print('Angle:', angle)
+    print('status:', tree_detect(raw_img, rgb_img))
     print('-----------------------------------')
+
 
 def main():
     rospy.init_node('team705_node', anonymous=True)

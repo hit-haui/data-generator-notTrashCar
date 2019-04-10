@@ -39,6 +39,9 @@ destination_line_height = 50
 # Slope for left, right angle calculation when we only can find a single lane
 destination_left_right_slope = 30
 
+#tree
+green_counting = 50000
+
 '''
 PARAM WORLD
 '''
