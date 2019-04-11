@@ -2,7 +2,8 @@ import numpy as np
 import cv2
 from param import *
 import math
-from yolo_traffic_sign import *
+import time
+
 
 
 kernel_size = 5
@@ -366,11 +367,12 @@ def find(img):
     
 
 def detect_angle_lane_left(img):
+    start_time = time.time()
     img = img[sky_line:,:]
     res,combined = detect_gray(img)
     no_cut = res
     print(res.shape)
-    res = res[:res.shape[0]-lane_left_pixel, :res.shape[1]-lane_left_pixel_height]
+    res = res[:res.shape[0]//2, :res.shape[1]//2]
     x,y,check = find(res)
     print(x,y)
     if check == True:
@@ -393,12 +395,14 @@ def detect_angle_lane_left(img):
     else :
         angle = 0
     print(angle)
-    cv2.imshow('no_cut', no_cut)
-    cv2.imshow('res',res)
-    cv2.imshow('img',img)
-    cv2.waitKey(1)
+    #cv2.imshow('no_cut', no_cut)
+    debug = False
+    if debug:
+        cv2.imwrite('/home/nvidia/Desktop/data_visual/no_cut/'+str(time.time())+'.jpg',no_cut)
+        cv2.imwrite('/home/nvidia/Desktop/data_visual/img/'+str(time.time())+'.jpg',img)
+    #cv2.waitKey(1)
     return angle
-
+'''
 def detect_angle_lane_right(img):
     img = img[sky_line:,:]
     res,combined = detect_gray(img)
@@ -409,14 +413,14 @@ def detect_angle_lane_right(img):
     print(x,y)
     if check == True:
         cv2.line(res , (x, y), (x, y), (255, 255, 255), 5)
-        cv2.line(img , (img.shape[1]-x, y), (img.shape[1]-x, y), (90, 0, 255), 5)
+        cv2.line(img , (lane_right_pixel_height+x, y), (lane_right_pixel_height+x, y), (90, 0, 255), 5)
         cv2.line(img , (img.shape[1]//2, y ), (img.shape[1]//2, y), (90, 0, 255), 5)
 
         x_mid = img.shape[1]//2
         y_mid = img.shape[0]
         cv2.line(img , (x_mid, y_mid ), (x_mid, y_mid ), (90, 0, 255), 5)
 
-        x_need = img.shape[1]-x-x_need_right #(img.shape[1]//2 + x) //2
+        x_need = lane_right_pixel_height+x-x_need_right #x+img.shape[1]//2 #(img.shape[1]//2 + x) //2
         y_need = y
 
         cv2.line(img , (x_need, y_need ), (x_need, y_need ), (90, 90, 255), 5)
@@ -427,12 +431,12 @@ def detect_angle_lane_right(img):
     else :
         angle = 0
     print(angle)
-    cv2.imshow('no_cut', no_cut)
-    cv2.imshow('res',res)
-    cv2.imshow('img',img)
-    cv2.waitKey(1)
+    #cv2.imwrite('/home/nvidia/Desktop/data_visual/no_cut/'+str(time.time())+'.jpg', no_cut)
+    #cv2.imwrite('/home/nvidia/Desktop/data_visual/image/'+str(time.time())+'.jpg',img)
+    #cv2.imshow('img',img)
+    #cv2.waitKey(1)
     return angle
-
+'''
 def traffic_detect(raw_img):
    # Object detect
     detections = detect(image=raw_img, thresh=0.05)
@@ -454,6 +458,7 @@ def traffic_detect(raw_img):
             x_bot = int(x_top + width)
             y_bot = int(y_top + height)
             cv2.rectangle(raw_img, (x_top, y_top), (x_bot, y_bot), (0, 255, 0), 2)
+            cv2.putText(raw_img, each_detection[0], (x_bot, y_bot), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), lineType=cv2.LINE_AA)
     cv2.imshow('traffic_sign_detection', raw_img)
     traffic = 0
     mean_confident_left = np.mean(confident['turn_left']) if 'turn_left' in confident.keys() else 0

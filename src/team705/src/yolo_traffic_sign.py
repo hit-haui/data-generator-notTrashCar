@@ -113,9 +113,9 @@ predict_image.argtypes = [c_void_p, IMAGE]
 predict_image.restype = POINTER(c_float)
 
 altNames = ['turn_left', 'turn_right']
-configPath = base_path + "/model/yolov3-tiny_obj.cfg"
+configPath = base_path + "/model/yolov3-tiny_obj-small.cfg"
 metaPath = base_path + "/model/obj.data"
-weightPath = base_path + "/model/yolov3-tiny_obj_last.weights"
+weightPath = base_path + "/model/yolov3-tiny_obj-small_final-2.weights"
 netMain = load_net_custom(configPath.encode(
     "ascii"), weightPath.encode("ascii"), 0, 1)
 metaMain = load_meta(metaPath.encode("ascii"))
